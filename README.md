@@ -1,12 +1,50 @@
-# BabyLM 2025 Text-Only Model Evaluation
+# BabyLM 2025 Text-Only Model Evaluation (GGUF Support)
 
-This repository contains scripts to evaluate three specific text-based language models on the BabyLM 2025 text-only strict track evaluation suite.
+This repository contains scripts to evaluate three specific text-based language models on the BabyLM 2025 text-only strict track evaluation suite, including **native GGUF model support**.
 
 ## Models to Evaluate
 
-1. **TinyLLama-v0-5M-F16** - `mofosyne/TinyLLama-v0-5M-F16-llamafile`
-2. **BitNet-b1.58-2B-4T** - `microsoft/bitnet-b1.58-2B-4T-gguf`
-3. **DataDecide-dolma1_7-no-math-code-14M** - `allenai/DataDecide-dolma1_7-no-math-code-14M`
+1. **TinyLLama-v0-5M-F16** - `mofosyne/TinyLLama-v0-5M-F16-llamafile` (GGUF)
+2. **BitNet-b1.58-2B-4T** - `microsoft/bitnet-b1.58-2B-4T-gguf` (GGUF)
+3. **DataDecide-dolma1_7-no-math-code-14M** - `allenai/DataDecide-dolma1_7-no-math-code-14M` (Standard)
+
+## ✨ GGUF Support
+
+This evaluation pipeline now supports **GGUF models natively** using HuggingFace transformers 4.51.3+ built-in GGUF capabilities. No conversion needed!
+
+### GGUF-Specific Setup
+
+1. **Install GGUF dependencies** (if not already installed):
+    ```bash
+    pip install gguf>=0.10.0
+    ```
+
+2. **Use the GGUF evaluation script**:
+    ```bash
+    # Copy the GGUF-specific script to the evaluation pipeline directory
+    cp ../Evaluation-Values/evaluate_gguf_models.py .
+
+    # Run GGUF evaluation
+    python evaluate_gguf_models.py
+    ```
+
+### How GGUF Support Works
+
+The evaluation pipeline automatically:
+- **Detects GGUF files** in HuggingFace repositories
+- **Uses native transformers GGUF loading** with `gguf_file` parameter
+- **Falls back to standard loading** if GGUF fails
+- **Tests model compatibility** before running full evaluations
+
+### GGUF vs Standard Evaluation
+
+| Feature | GGUF Models | Standard Models |
+|---------|-------------|-----------------|
+| Loading Method | Native transformers GGUF support | Standard transformers |
+| Memory Usage | Optimized quantized weights | Full precision weights |
+| Inference Speed | Faster (quantized) | Baseline speed |
+| Model Size | Smaller on disk | Larger on disk |
+| Accuracy | Slightly reduced (quantization) | Full accuracy |
 
 ## Evaluation Tasks
 
