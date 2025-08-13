@@ -28,11 +28,28 @@ git clone https://github.com/babylm/evaluation-pipeline-2025.git
 cd evaluation-pipeline-2025
 ```
 
-### 2. Download Evaluation Data
+### 2. Setup Evaluation Data
 
+The evaluation data should already be available in the parent directory as `../evaluation_data/`. 
+The directory structure should look like this:
+
+```
+BabyLM/
+├── evaluation-pipeline-2025/
+│   ├── evaluation_pipeline/
+│   ├── eval_zero_shot.sh
+│   └── ...
+├── evaluation_data/
+│   ├── fast_eval/
+│   └── full_eval/
+└── Evaluation-Values/
+    ├── evaluate_models.py
+    └── README.md
+```
+
+If evaluation_data is not present, download it from OSF:
 ```bash
-# Download evaluation data from OSF (https://osf.io/ryjfm/)
-# Place the evaluation_data folder in the root directory
+# From the BabyLM parent directory
 wget -O evaluation_data.zip "https://osf.io/ryjfm/download"
 unzip evaluation_data.zip
 ```

@@ -35,15 +35,15 @@ MODELS = [
 EVAL_TYPES = {
     "fast": {
         "script": "./eval_zero_shot_fast.sh",
-        "data_dir": "evaluation_data/fast_eval"
+        "data_dir": "../evaluation_data/fast_eval"
     },
     "full": {
         "script": "./eval_zero_shot.sh",
-        "data_dir": "evaluation_data/full_eval"
+        "data_dir": "../evaluation_data/full_eval"
     },
     "finetune": {
         "script": "./eval_finetuning.sh",
-        "data_dir": "evaluation_data/full_eval"
+        "data_dir": "../evaluation_data/full_eval"
     }
 }
 
@@ -110,9 +110,9 @@ def main():
         sys.exit(1)
 
     # Check if evaluation data exists
-    if not os.path.exists("evaluation_data"):
+    if not os.path.exists("../evaluation_data"):
         print("ERROR: evaluation_data directory not found!")
-        print("Please ensure evaluation_data is downloaded and placed in the root directory.")
+        print("Please ensure evaluation_data is downloaded and placed in the parent directory.")
         sys.exit(1)
 
     # Create results directory if it doesn't exist
