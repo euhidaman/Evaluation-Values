@@ -17,7 +17,8 @@ MODELS = [
         "architecture": "causal",
         "revision": "main",
         "model_type": "gguf",
-        "gguf_file": "TinyLLama-4.6M-v0.0-F16.gguf"
+        "gguf_file": "TinyLLama-4.6M-v0.0-F16.gguf",
+        "compatible": True
     },
     {
         "name": "bitnet-b1.58-2B-4T",
@@ -25,7 +26,9 @@ MODELS = [
         "architecture": "causal",
         "revision": "main",
         "model_type": "gguf",
-        "gguf_file": "ggml-model-i2_s.gguf"
+        "gguf_file": "ggml-model-i2_s.gguf",
+        "compatible": False,
+        "note": "GGUF uses unsupported quantization type (np.uint32(36)). May work with specialized GGUF tools."
     },
     {
         "name": "DataDecide-dolma1_7-no-math-code-14M",
@@ -33,7 +36,9 @@ MODELS = [
         "architecture": "causal",
         "revision": "main",
         "model_type": "olmo",
-        "requires_trust_remote_code": True
+        "requires_trust_remote_code": True,
+        "compatible": False,
+        "note": "Requires newer transformers version with hf_olmo support. Consider upgrading transformers or using AI2 OLMo library."
     }
 ]
 
@@ -85,6 +90,12 @@ def evaluate_model(model_config, eval_type="fast"):
 
     print(f"\n🚀 Starting {eval_type} evaluation for {model_name}")
 
+    # Check if model is known to be incompatible
+    if not model_config.get("compatible", True):
+        print(f"⚠️  WARNING: {model_name} has known compatibility issues:")
+        print(f"   {model_config.get('note', 'Unknown compatibility issue')}")
+        print(f"   Attempting evaluation anyway - the evaluation pipeline may handle it differently...")
+
     if eval_type == "fast":
         cmd = f"{EVAL_TYPES[eval_type]['script']} {model_path} {revision} {architecture} {EVAL_TYPES[eval_type]['data_dir']}"
     elif eval_type == "full":
@@ -101,6 +112,8 @@ def evaluate_model(model_config, eval_type="fast"):
         print(f"✅ {eval_type} evaluation completed for {model_name}")
     else:
         print(f"❌ {eval_type} evaluation failed for {model_name}")
+        if not model_config.get("compatible", True):
+            print(f"   This failure may be due to the known compatibility issue mentioned above.")
 
     return success
 

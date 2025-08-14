@@ -19,7 +19,8 @@ MODELS = [
         "architecture": "causal",
         "revision": "main",
         "model_type": "gguf",
-        "gguf_file": "TinyLLama-4.6M-v0.0-F16.gguf"
+        "gguf_file": "TinyLLama-4.6M-v0.0-F16.gguf",
+        "compatible": True
     },
     {
         "name": "bitnet-b1.58-2B-4T",
@@ -27,7 +28,9 @@ MODELS = [
         "architecture": "causal",
         "revision": "main",
         "model_type": "gguf",
-        "gguf_file": "ggml-model-i2_s.gguf"
+        "gguf_file": "ggml-model-i2_s.gguf",
+        "compatible": False,
+        "note": "GGUF uses unsupported quantization type (np.uint32(36)). Evaluation will be attempted but may fail."
     },
     {
         "name": "DataDecide-dolma1_7-no-math-code-14M",
@@ -35,7 +38,9 @@ MODELS = [
         "architecture": "causal",
         "revision": "main",
         "model_type": "olmo",
-        "requires_trust_remote_code": True
+        "requires_trust_remote_code": True,
+        "compatible": False,
+        "note": "Requires hf_olmo architecture support. May need transformers upgrade or AI2 OLMo library."
     }
 ]
 
@@ -155,10 +160,20 @@ def evaluate_model(model_config, eval_type="fast"):
 
     print(f"\n🚀 Starting {eval_type} evaluation for {model_name}")
 
-    # Test model loading first
-    if not test_gguf_model_loading(model_config):
-        print(f"❌ Skipping evaluation for {model_name} due to loading failure")
-        return False
+    # Check if model is known to be incompatible
+    if not model_config.get("compatible", True):
+        print(f"⚠️  WARNING: {model_name} has known compatibility issues:")
+        print(f"   {model_config.get('note', 'Unknown compatibility issue')}")
+        print(f"   The evaluation pipeline may handle model loading differently...")
+
+    # For incompatible models, skip the pre-test and go straight to evaluation
+    if model_config.get("compatible", True):
+        # Only test loading for compatible models
+        if not test_gguf_model_loading(model_config):
+            print(f"❌ Skipping evaluation for {model_name} due to loading failure")
+            return False
+    else:
+        print(f"🔄 Skipping pre-test for {model_name} - letting evaluation pipeline handle loading")
 
     if eval_type == "fast":
         cmd = f"{EVAL_TYPES[eval_type]['script']} {model_path} {revision} {architecture} {EVAL_TYPES[eval_type]['data_dir']}"
@@ -176,6 +191,8 @@ def evaluate_model(model_config, eval_type="fast"):
         print(f"✅ {eval_type} evaluation completed for {model_name}")
     else:
         print(f"❌ {eval_type} evaluation failed for {model_name}")
+        if not model_config.get("compatible", True):
+            print(f"   This failure may be due to the known compatibility issue.")
 
     return success
 
