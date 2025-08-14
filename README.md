@@ -184,21 +184,47 @@ Has been fixed by adding automatic NLTK data downloads to the evaluation pipelin
 - **BitNet-b1.58-2B-4T**: GGUF format, larger quantized model
 - **DataDecide-dolma1_7-no-math-code-14M**: Standard format, requires more memory
 
-## Files in This Repository
+## Current Status (Updated August 2025)
 
-- `evaluate_models.py`: Standard evaluation script for all three models
-- `evaluate_gguf_models.py`: GGUF-optimized evaluation with compatibility testing
-- `check_model_compatibility.py`: Tests model loading and compatibility
-- `README.md`: This documentation
+### ✅ Working Models
+- **TinyLLama-v0-5M-F16**: Fully compatible with GGUF support
+  - All checks pass: repository access, config loading, tokenizer, and model loading
+  - Ready for evaluation on all tasks (fast, full, finetune)
 
-## Results
+### ❌ Problematic Models
+- **BitNet-b1.58-2B-4T**: GGUF compatibility issues
+  - Issue: Uses unsupported quantization type `np.uint32(36)`
+  - Status: Config and tokenizer load fine, but model loading fails
+  - Potential solutions: Use BitNet official tools or find alternative quantization
 
-Results will be saved in the `results/` directory within the evaluation pipeline, with separate folders for each evaluation type and model.
+- **DataDecide-dolma1_7-no-math-code-14M**: Architecture not supported
+  - Issue: `hf_olmo` architecture not recognized by current transformers
+  - Status: All loading steps fail
+  - Potential solutions: Install `ai2-olmo` library or use newer transformers
 
-## Support
+## Recommended Approach
 
-For issues with:
-- **Evaluation pipeline**: Check the main evaluation-pipeline-2025 repository
-- **Model loading**: Use the compatibility checker script
-- **GGUF support**: Ensure transformers>=4.51.3 and gguf>=0.10.0
-- **Path issues**: Verify the directory structure matches the layout above
+### Option 1: Evaluate Working Models Only (Recommended)
+```bash
+# Navigate to evaluation pipeline
+cd evaluation-pipeline-2025
+
+# Copy and run the compatible-only evaluation
+cp ../Evaluation-Values/evaluate_compatible_models.py .
+python evaluate_compatible_models.py
+```
+
+### Option 2: Try Alternative Solutions
+```bash
+# Try fixes for problematic models
+cp ../Evaluation-Values/try_alternatives.py .
+python try_alternatives.py
+```
+
+### Option 3: Use Alternative Models
+Consider replacing problematic models with these proven alternatives:
+- `gpt2` - Standard GPT-2 small model
+- `distilgpt2` - Faster, smaller GPT-2 variant  
+- `TinyLlama/TinyLlama-1.1B-Chat-v1.0` - Standard TinyLlama (not GGUF)
+- `microsoft/phi-2` - Small but capable Microsoft model
+````
