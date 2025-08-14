@@ -69,8 +69,8 @@ if LLAMA_AVAILABLE:
     class BitNetMLP(LlamaMLP):
         def __init__(self, config):
             super().__init__(config)
-            # Add BitNet-specific sub-normalization
-            self.ffn_sub_norm = BitNetRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+            # Add BitNet-specific sub-normalization with correct dimensions
+            self.ffn_sub_norm = BitNetRMSNorm(config.intermediate_size, eps=config.rms_norm_eps)
 
     class BitNetDecoderLayer(LlamaDecoderLayer):
         def __init__(self, config: BitNetConfig, layer_idx: int):
