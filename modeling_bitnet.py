@@ -63,14 +63,21 @@ if LLAMA_AVAILABLE:
     class BitNetAttention(LlamaAttention):
         def __init__(self, config: BitNetConfig, layer_idx: Optional[int] = None):
             super().__init__(config, layer_idx)
+            # Add BitNet-specific sub-normalization
+            self.attn_sub_norm = BitNetRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
     class BitNetMLP(LlamaMLP):
         def __init__(self, config):
             super().__init__(config)
+            # Add BitNet-specific sub-normalization
+            self.ffn_sub_norm = BitNetRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
     class BitNetDecoderLayer(LlamaDecoderLayer):
         def __init__(self, config: BitNetConfig, layer_idx: int):
             super().__init__(config, layer_idx)
+            # Replace with BitNet-specific components
+            self.self_attn = BitNetAttention(config=config, layer_idx=layer_idx)
+            self.mlp = BitNetMLP(config)
 
     class BitNetPreTrainedModel(LlamaPreTrainedModel):
         config_class = BitNetConfig
