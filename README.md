@@ -1,230 +1,272 @@
-# BabyLM 2025 Text-Only Model Evaluation (GGUF Support)
+# BabyLM 2025 Model Evaluation Setup
 
-This repository contains scripts to evaluate three specific text-based language models on the BabyLM 2025 text-only strict track evaluation suite, including **native GGUF model support**.
+This repository contains scripts and instructions for evaluating three specific models on the BabyLM 2025 text-only tracks (strict and strict-small).
 
 ## Models to Evaluate
 
-1. **TinyLLama-v0-5M-F16** - `mofosyne/TinyLLama-v0-5M-F16-llamafile` (GGUF)
-2. **BitNet-b1.58-2B-4T** - `microsoft/bitnet-b1.58-2B-4T-gguf` (GGUF)
-3. **DataDecide-dolma1_7-no-math-code-14M** - `allenai/DataDecide-dolma1_7-no-math-code-14M` (Standard)
+1. **Microsoft BitNet B1.58-2B-4T**: `microsoft/bitnet-b1.58-2B-4T`
+2. **AllenAI DataDecide Dolma 14M**: `allenai/DataDecide-dolma1_7-no-math-code-14M`  
+3. **HPD TinyBERT F128**: `Xuandong/HPD-TinyBERT-F128`
 
-## ✨ GGUF Support
+## Evaluation Tracks
 
-This evaluation pipeline now supports **GGUF models natively** using HuggingFace transformers 4.51.3+ built-in GGUF capabilities. No conversion needed!
+- **Strict Track**: Full evaluation with all tasks including finetuning
+- **Strict-Small Track**: Fast evaluation subset for quick testing
 
-### GGUF-Specific Setup
+## Prerequisites
 
-1. **Install GGUF dependencies** (if not already installed):
-    ```bash
-    pip install gguf>=0.10.0
-    ```
+### 1. System Requirements
+- Python 3.8+ 
+- CUDA-capable GPU (recommended)
+- At least 50GB free disk space for models and data
+- Linux/macOS environment (Windows with WSL2 also works)
 
-2. **Use the GGUF evaluation script**:
-    ```bash
-    # Copy the GGUF-specific script to the evaluation pipeline directory
-    cp ../Evaluation-Values/evaluate_gguf_models.py .
-
-    # Run GGUF evaluation
-    python evaluate_gguf_models.py
-    ```
-
-### How GGUF Support Works
-
-The evaluation pipeline automatically:
-- **Detects GGUF files** in HuggingFace repositories
-- **Uses native transformers GGUF loading** with `gguf_file` parameter
-- **Falls back to standard loading** if GGUF fails
-- **Tests model compatibility** before running full evaluations
-
-### GGUF vs Standard Evaluation
-
-| Feature | GGUF Models | Standard Models |
-|---------|-------------|-----------------|
-| Loading Method | Native transformers GGUF support | Standard transformers |
-| Memory Usage | Optimized quantized weights | Full precision weights |
-| Inference Speed | Faster (quantized) | Baseline speed |
-| Model Size | Smaller on disk | Larger on disk |
-| Accuracy | Slightly reduced (quantization) | Full accuracy |
-
-## Evaluation Tasks
-
-The evaluation includes the following text-only tasks:
-- **BLiMP** (Benchmark of Linguistic Minimal Pairs)
-- **EWoK** (Evaluation Without Kin)
-- **Entity Tracking** 
-- **WUG Tasks** (Adjective Nominalization & Past Tense)
-- **Reading Comprehension**
-- **Fine-tuning on GLUE tasks** (BoolQ, MultiRC, RTE)
-
-## Directory Structure
-
-The correct directory structure should be:
-
+### 2. Required Repositories
+Ensure you have the following repositories in your BabyLM workspace:
 ```
-D:\BabyLM\
-├── evaluation-pipeline-2025/          # Main evaluation pipeline
-│   ├── evaluation_pipeline/
-│   ├── eval_zero_shot.sh
-│   ├── eval_zero_shot_fast.sh
-│   ├── eval_finetuning.sh
-│   └── requirements.txt
-├── evaluation_data/                   # Evaluation datasets
-│   ├── fast_eval/
-│   └── full_eval/
-└── Evaluation-Values/                 # This repository
-    ├── evaluate_models.py
-    ├── evaluate_gguf_models.py
-    ├── check_model_compatibility.py
-    └── README.md
+BabyLM/
+├── evaluation-pipeline-2025/     # Main evaluation pipeline
+├── evaluation_data/              # Evaluation datasets 
+├── babylm_dataset/              # Training data (if needed)
+└── Evaluation-Values/           # This repository
 ```
 
 ## Setup Instructions
 
-### 1. Prerequisites
+### Step 1: Install Dependencies
 
-Ensure you have the evaluation pipeline and data in the correct locations:
-
+Navigate to the evaluation pipeline and install requirements:
 ```bash
-# Navigate to your BabyLM directory
-cd /workspace
-
-# Verify directory structure
-ls -la
-# Should show: evaluation-pipeline-2025/, evaluation_data/, Evaluation-Values/
-```
-
-### 2. Setup Python Environment
-
-```bash
-# Navigate to the evaluation pipeline directory
-cd evaluation-pipeline-2025
-
-# Install dependencies (if not already installed)
+cd ../evaluation-pipeline-2025
 pip install -r requirements.txt
-
-# Install additional GGUF support
-pip install gguf>=0.10.0
 ```
 
-### 3. Fix NLTK Dependencies
+Required packages include:
+- transformers>=4.51.3
+- torch>=2.7.0
+- datasets>=3.6.0
+- scikit-learn>=1.6.1
+- numpy>=2.2.5
+- pandas>=2.2.3
+- statsmodels>=0.14.4
+- nltk>=3.9.1
+- wandb>=0.19.11
 
-The NLTK `punkt_tab` error has been fixed in the evaluation pipeline. The fix automatically downloads required NLTK data when running EWoK evaluations.
+### Step 2: Check and Download Evaluation Data
 
-### 4. Test Model Compatibility
+First, check if all evaluation data is available:
+```bash
+cd Evaluation-Values
+python check_evaluation_data.py
+```
 
-Before running evaluations, test if models can be loaded:
+If any evaluation data is missing, you may need to download it manually. Check the evaluation-pipeline-2025 repository for specific download instructions.
+
+### Step 3: Download Models
+
+Download all three models from Hugging Face:
+```bash
+python download_models.py --models_dir ./models
+```
+
+This will create:
+```
+models/
+├── microsoft--bitnet-b1.58-2B-4T/
+├── allenai--DataDecide-dolma1_7-no-math-code-14M/
+└── Xuandong--HPD-TinyBERT-F128/
+```
+
+**Note**: The BitNet model (2B parameters) will require significant download time and storage (~4GB).
+
+## Running Evaluations
+
+### Option 1: Evaluate All Models (Recommended)
+
+Run comprehensive evaluation of all models on both tracks:
+```bash
+bash run_all_evaluations.sh
+```
+
+This will automatically:
+- Evaluate each model on both strict and strict-small tracks
+- Use appropriate backends for each model type
+- Save results in organized directory structure
+
+### Option 2: Evaluate Individual Models
+
+For more control, evaluate models individually:
 
 ```bash
-# Copy the compatibility checker to the evaluation pipeline directory
-cp ../Evaluation-Values/check_model_compatibility.py .
+# BitNet model on strict track
+bash evaluate_model.sh ./models/microsoft--bitnet-b1.58-2B-4T microsoft--bitnet-b1.58-2B-4T strict causal
 
-# Run compatibility check
-python check_model_compatibility.py
+# DataDecide model on strict-small track  
+bash evaluate_model.sh ./models/allenai--DataDecide-dolma1_7-no-math-code-14M allenai--DataDecide-dolma1_7-no-math-code-14M strict-small causal
+
+# TinyBERT model on strict track
+bash evaluate_model.sh ./models/Xuandong--HPD-TinyBERT-F128 Xuandong--HPD-TinyBERT-F128 strict masked
 ```
 
-## Usage
+## Evaluation Components
 
-### Option 1: Standard Evaluation (All Models)
+### Strict Track (Full Evaluation)
+- **Zero-shot tasks**:
+  - BLiMP (linguistic acceptability)
+  - BLiMP Supplement
+  - EWoK (semantic knowledge)
+  - Entity Tracking
+  - WUG Adjective Nominalization
+  - WUG Past Tense Formation
+  - COMPS (conceptual property knowledge)
+  - Reading Time Prediction
 
-```bash
-# Copy the standard evaluation script
-cp ../Evaluation-Values/evaluate_models.py .
+- **Fine-tuning tasks (GLUE)**:
+  - BoolQ (question answering)
+  - MultiRC (reading comprehension)
+  - RTE (textual entailment)
+  - WSC (coreference resolution)
+  - MRPC (paraphrase detection)
+  - QQP (question paraphrase)
+  - MNLI (natural language inference)
 
-# Run all evaluations (fast, full, finetune)
-python evaluate_models.py
+- **Age of Acquisition (AoA)**:
+  - Correlation with human acquisition data
+
+### Strict-Small Track (Fast Evaluation)
+- Subset of zero-shot tasks with reduced datasets
+- No fine-tuning evaluations
+- Faster turnaround for development/testing
+
+## Model Backend Configuration
+
+The evaluation pipeline automatically selects appropriate backends:
+
+- **BitNet & DataDecide models**: `causal` (decoder-only)
+- **TinyBERT model**: `masked` (encoder-only)
+
+## Expected Runtime
+
+**Approximate evaluation times per model**:
+
+- **Strict-Small Track**: 2-4 hours
+- **Strict Track**: 8-12 hours (including fine-tuning)
+
+**Total for all models**: 30-48 hours
+
+Times vary based on:
+- GPU specifications
+- Model size
+- Network speed for downloads
+
+## Results Structure
+
+Results will be organized as follows:
+```
+results/
+├── microsoft--bitnet-b1.58-2B-4T/
+│   ├── strict/
+│   │   ├── main/
+│   │   │   ├── finetune/
+│   │   │   │   ├── boolq/
+│   │   │   │   ├── multirc/
+│   │   │   │   └── ...
+│   │   │   └── zero_shot/
+│   │   │       ├── causal/
+│   │   │       │   ├── blimp/
+│   │   │       │   ├── ewok/
+│   │   │       │   └── ...
+│   │   └── ...
+│   └── strict-small/
+│       └── strict-small/
+├── allenai--DataDecide-dolma1_7-no-math-code-14M/
+└── Xuandong--HPD-TinyBERT-F128/
 ```
 
-### Option 2: GGUF-Focused Evaluation
-
-```bash
-# Copy the GGUF evaluation script
-cp ../Evaluation-Values/evaluate_gguf_models.py .
-
-# Run GGUF-optimized evaluations
-python evaluate_gguf_models.py
-```
-
-### Option 3: Manual Evaluation
-
-Run evaluations manually for individual models:
-
-```bash
-# Fast evaluation (quick test)
-./eval_zero_shot_fast.sh mofosyne/TinyLLama-v0-5M-F16-llamafile main causal ../evaluation_data/fast_eval
-
-# Full evaluation (comprehensive)
-./eval_zero_shot.sh mofosyne/TinyLLama-v0-5M-F16-llamafile causal ../evaluation_data/full_eval
-
-# Fine-tuning evaluation (GLUE tasks)
-./eval_finetuning.sh mofosyne/TinyLLama-v0-5M-F16-llamafile
-```
+Each task directory contains:
+- `predictions.jsonl`: Model predictions
+- `results.txt`: Evaluation metrics
+- `best_temperature_report.txt`: Calibration results (for some tasks)
 
 ## Troubleshooting
 
-### NLTK Error Fixed
-
-The original error:
-```
-LookupError: Resource punkt_tab not found.
-```
-
-Has been fixed by adding automatic NLTK data downloads to the evaluation pipeline. The fix is located in:
-- `evaluation_pipeline/ewok/dl_and_filter.py`
-
 ### Common Issues
 
-1. **Path Issues**: Ensure you're running scripts from the `evaluation-pipeline-2025` directory
-2. **Missing Data**: Verify `../evaluation_data/` exists and contains `fast_eval/` and `full_eval/`
-3. **GGUF Loading Fails**: The scripts automatically fall back to standard model loading
-4. **Memory Issues**: GGUF models use less memory; try those first for limited GPU setups
+1. **CUDA out of memory**:
+   ```bash
+   export CUDA_VISIBLE_DEVICES=0  # Use specific GPU
+   # Reduce batch size in evaluation scripts if needed
+   ```
 
-### Model-Specific Notes
+2. **Missing evaluation data**:
+   - Check `../evaluation_data/` directory structure
+   - Refer to evaluation-pipeline-2025 documentation
+   - Some tasks will be skipped if data is unavailable
 
-- **TinyLLama-v0-5M-F16**: GGUF format, very small model, good for testing
-- **BitNet-b1.58-2B-4T**: GGUF format, larger quantized model
-- **DataDecide-dolma1_7-no-math-code-14M**: Standard format, requires more memory
+3. **Model download failures**:
+   ```bash
+   # Retry with specific model
+   python download_models.py --models_dir ./models
+   # Or download manually from Hugging Face
+   ```
 
-## Current Status (Updated August 2025)
+4. **Hugging Face authentication** (if needed):
+   ```bash
+   pip install huggingface_hub
+   huggingface-cli login
+   ```
 
-### ✅ Working Models
-- **TinyLLama-v0-5M-F16**: Fully compatible with GGUF support
-  - All checks pass: repository access, config loading, tokenizer, and model loading
-  - Ready for evaluation on all tasks (fast, full, finetune)
+### Performance Optimization
 
-### ❌ Problematic Models
-- **BitNet-b1.58-2B-4T**: GGUF compatibility issues
-  - Issue: Uses unsupported quantization type `np.uint32(36)`
-  - Status: Config and tokenizer load fine, but model loading fails
-  - Potential solutions: Use BitNet official tools or find alternative quantization
+- **For faster evaluation**: Use strict-small track first
+- **For GPU memory issues**: Evaluate models sequentially
+- **For network issues**: Download models separately before evaluation
 
-- **DataDecide-dolma1_7-no-math-code-14M**: Architecture not supported
-  - Issue: `hf_olmo` architecture not recognized by current transformers
-  - Status: All loading steps fail
-  - Potential solutions: Install `ai2-olmo` library or use newer transformers
+## File Descriptions
 
-## Recommended Approach
+- `download_models.py`: Downloads all three models from Hugging Face
+- `evaluate_model.sh`: Main evaluation script for single model/track
+- `run_all_evaluations.sh`: Batch evaluation of all models and tracks
+- `check_evaluation_data.py`: Verifies evaluation data availability
 
-### Option 1: Evaluate Working Models Only (Recommended)
+## Important Notes
+
+1. **Model Types**: Different models use different architectures:
+   - BitNet: Quantized decoder model
+   - DataDecide: Standard decoder model  
+   - TinyBERT: Compressed encoder model
+
+2. **Evaluation Data**: Some evaluation components may require additional downloads not covered by this setup
+
+3. **Results Submission**: Results from the `strict` track should be used for final BabyLM 2025 submissions
+
+4. **Resource Requirements**: Ensure adequate disk space and memory before starting
+
+## Support
+
+For issues related to:
+- **Evaluation pipeline**: Check evaluation-pipeline-2025 repository issues
+- **Model downloads**: Check individual model pages on Hugging Face
+- **This setup**: Review error logs and check file paths
+
+## Quick Start Summary
+
 ```bash
-# Navigate to evaluation pipeline
-cd evaluation-pipeline-2025
+# 1. Install dependencies
+cd ../evaluation-pipeline-2025
+pip install -r requirements.txt
 
-# Copy and run the compatible-only evaluation
-cp ../Evaluation-Values/evaluate_compatible_models.py .
-python evaluate_compatible_models.py
+# 2. Return to evaluation directory
+cd ../Evaluation-Values
+
+# 3. Check evaluation data
+python check_evaluation_data.py
+
+# 4. Download models
+python download_models.py
+
+# 5. Run all evaluations
+bash run_all_evaluations.sh
 ```
 
-### Option 2: Try Alternative Solutions
-```bash
-# Try fixes for problematic models
-cp ../Evaluation-Values/try_alternatives.py .
-python try_alternatives.py
-```
-
-### Option 3: Use Alternative Models
-Consider replacing problematic models with these proven alternatives:
-- `gpt2` - Standard GPT-2 small model
-- `distilgpt2` - Faster, smaller GPT-2 variant  
-- `TinyLlama/TinyLlama-1.1B-Chat-v1.0` - Standard TinyLlama (not GGUF)
-- `microsoft/phi-2` - Small but capable Microsoft model
-````
+Expected total runtime: 30-48 hours for complete evaluation of all models on both tracks.
