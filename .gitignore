@@ -1,0 +1,158 @@
+# BabyLM Evaluation Repository .gitignore
+
+# Model weights and downloaded models (MOST IMPORTANT)
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.pkl
+*.pickle
+
+# Model cache and temporary files
+.cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Evaluation results and outputs
+results/
+outputs/
+logs/
+wandb/
+*.log
+
+# Dataset files (these are large and should be downloaded separately)
+evaluation_data/
+babylm_dataset/
+*.zip
+*.tar.gz
+*.tar
+*.gz
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python virtual environments
+venv/
+env/
+.env
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.npy
+*.npz
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Configuration files with sensitive information
+.secrets
+.env.local
+.env.production
+config.ini
+
+# Hugging Face cache
+~/.cache/huggingface/
+
+# CUDA compilation cache
+.nv_fatb/
+
+# Custom evaluation outputs
+predictions.jsonl
+best_temperature_report.txt
+error_analysis.txt

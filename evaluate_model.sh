@@ -33,6 +33,23 @@ if [ ! -f "$MODEL_ABS_PATH/config.json" ]; then
     exit 1
 fi
 
+# Special setup for BitNet model
+if [[ "$MODEL_NAME" == *"bitnet"* ]] || [[ "$MODEL_DIR" == *"bitnet"* ]]; then
+    echo "Detected BitNet model, setting up custom files..."
+    python bitnet_wrapper.py
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to setup BitNet model files"
+        exit 1
+    fi
+
+    # Set up cleanup on exit
+    cleanup_bitnet() {
+        echo "Cleaning up BitNet temporary files..."
+        python bitnet_wrapper.py cleanup
+    }
+    trap cleanup_bitnet EXIT
+fi
+
 # Set evaluation data directory based on track
 if [ "$TRACK" = "strict-small" ]; then
     EVAL_DIR="../evaluation_data/fast_eval"
