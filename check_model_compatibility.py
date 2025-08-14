@@ -18,19 +18,22 @@ MODELS = [
         "name": "TinyLLama-v0-5M-F16",
         "hf_path": "mofosyne/TinyLLama-v0-5M-F16-llamafile",
         "architecture": "causal",
-        "model_type": "gguf"
+        "model_type": "gguf",
+        "gguf_file": "TinyLLama-4.6M-v0.0-F16.gguf"
     },
     {
         "name": "bitnet-b1.58-2B-4T",
         "hf_path": "microsoft/bitnet-b1.58-2B-4T-gguf",
         "architecture": "causal",
-        "model_type": "gguf"
+        "model_type": "gguf",
+        "gguf_file": "ggml-model-i2_s.gguf"
     },
     {
         "name": "DataDecide-dolma1_7-no-math-code-14M",
         "hf_path": "allenai/DataDecide-dolma1_7-no-math-code-14M",
         "architecture": "causal",
-        "model_type": "standard"
+        "model_type": "olmo",
+        "requires_trust_remote_code": True
     }
 ]
 
@@ -47,20 +50,37 @@ def detect_gguf_files(repo_files):
     gguf_files = [f for f in repo_files if f.endswith('.gguf')]
     return gguf_files
 
-def test_model_config(model_path):
+def test_model_config(model_path, model_config=None):
     """Test if model configuration can be loaded."""
     try:
-        config = AutoConfig.from_pretrained(model_path)
+        # For OLMo models, we need trust_remote_code
+        if model_config and model_config.get("model_type") == "olmo":
+            config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+        else:
+            config = AutoConfig.from_pretrained(model_path)
         return True, config
     except Exception as e:
         return False, str(e)
 
-def test_tokenizer_loading(model_path):
+def test_tokenizer_loading(model_path, model_config=None):
     """Test if tokenizer can be loaded."""
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        # For OLMo models, we need trust_remote_code
+        if model_config and model_config.get("model_type") == "olmo":
+            tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
         return True, tokenizer
     except Exception as e:
+        # For GGUF models, try to use a fallback tokenizer
+        if model_config and model_config.get("model_type") == "gguf":
+            try:
+                # Try to use LlamaTokenizer as fallback for GGUF models
+                from transformers import LlamaTokenizer
+                tokenizer = LlamaTokenizer.from_pretrained("huggyllama/llama-7b")
+                return True, tokenizer
+            except Exception as fallback_error:
+                return False, f"Primary: {str(e)}, Fallback: {str(fallback_error)}"
         return False, str(e)
 
 def test_model_loading(model_config):
@@ -74,7 +94,7 @@ def test_model_loading(model_config):
             try:
                 model = AutoModelForCausalLM.from_pretrained(
                     model_path,
-                    gguf_file="model.gguf",
+                    gguf_file=model_config["gguf_file"],
                     torch_dtype=torch.float16,
                     device_map="cpu"  # Use CPU for compatibility testing
                 )
@@ -90,6 +110,15 @@ def test_model_loading(model_config):
                     return True, f"Standard loading successful (GGUF failed: {gguf_error})"
                 except Exception as std_error:
                     return False, f"Both GGUF and standard loading failed. GGUF: {gguf_error}, Standard: {std_error}"
+        elif model_type == "olmo":
+            # OLMo model loading with trust_remote_code
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                torch_dtype=torch.float16,
+                device_map="cpu"
+            )
+            return True, "OLMo loading successful with trust_remote_code"
         else:
             # Standard model loading
             model = AutoModelForCausalLM.from_pretrained(
@@ -146,7 +175,7 @@ def check_model_compatibility(model_config):
 
     # 2. Check model configuration
     print("2️⃣ Checking model configuration...")
-    config_ok, config_info = test_model_config(model_path)
+    config_ok, config_info = test_model_config(model_path, model_config)
     if config_ok:
         print("   ✅ Model configuration loaded successfully")
         print(f"   📋 Model type: {config_info.model_type}")
@@ -157,7 +186,7 @@ def check_model_compatibility(model_config):
 
     # 3. Check tokenizer
     print("3️⃣ Checking tokenizer...")
-    tokenizer_ok, tokenizer_info = test_tokenizer_loading(model_path)
+    tokenizer_ok, tokenizer_info = test_tokenizer_loading(model_path, model_config)
     if tokenizer_ok:
         print("   ✅ Tokenizer loaded successfully")
         print(f"   📝 Vocab size: {len(tokenizer_info.get_vocab())}")

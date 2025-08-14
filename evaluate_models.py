@@ -15,19 +15,25 @@ MODELS = [
         "name": "TinyLLama-v0-5M-F16",
         "hf_path": "mofosyne/TinyLLama-v0-5M-F16-llamafile",
         "architecture": "causal",
-        "revision": "main"
+        "revision": "main",
+        "model_type": "gguf",
+        "gguf_file": "TinyLLama-4.6M-v0.0-F16.gguf"
     },
     {
         "name": "bitnet-b1.58-2B-4T",
         "hf_path": "microsoft/bitnet-b1.58-2B-4T-gguf",
         "architecture": "causal",
-        "revision": "main"
+        "revision": "main",
+        "model_type": "gguf",
+        "gguf_file": "ggml-model-i2_s.gguf"
     },
     {
         "name": "DataDecide-dolma1_7-no-math-code-14M",
         "hf_path": "allenai/DataDecide-dolma1_7-no-math-code-14M",
         "architecture": "causal",
-        "revision": "main"
+        "revision": "main",
+        "model_type": "olmo",
+        "requires_trust_remote_code": True
     }
 ]
 
