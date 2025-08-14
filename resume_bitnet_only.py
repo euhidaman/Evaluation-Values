@@ -285,61 +285,91 @@ save_task_result "{track}" "zero_shot" "blimp_supplement" "$OUTPUT_FILE"
                         script_content += f"""
 echo "Running EWoK evaluation..."
 OUTPUT_FILE="$RESULTS_DIR/ewok_output.log"
-python -m evaluation_pipeline.sentence_zero_shot.run \\
-    --model_path_or_name "$MODEL_ABS_PATH" \\
-    --backend $BACKEND \\
-    --task ewok \\
-    --data_path "${{EVAL_DIR}}/ewok_filtered" \\
-    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+if [ -d "${{EVAL_DIR}}/ewok_filtered" ] && [ "$(ls -A ${{EVAL_DIR}}/ewok_filtered 2>/dev/null)" ]; then
+    python -m evaluation_pipeline.sentence_zero_shot.run \\
+        --model_path_or_name "$MODEL_ABS_PATH" \\
+        --backend $BACKEND \\
+        --task ewok \\
+        --data_path "${{EVAL_DIR}}/ewok_filtered" \\
+        --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+else
+    echo "EWoK data not found or empty, skipping..." | tee "$OUTPUT_FILE"
+fi
+cd /workspace/Evaluation-Values
 save_task_result "{track}" "zero_shot" "ewok" "$OUTPUT_FILE"
+cd ../evaluation-pipeline-2025
 """
                     elif task == 'entity_tracking':
                         script_content += f"""
 echo "Running Entity Tracking evaluation..."
 OUTPUT_FILE="$RESULTS_DIR/entity_tracking_output.log"
-python -m evaluation_pipeline.sentence_zero_shot.run \\
-    --model_path_or_name "$MODEL_ABS_PATH" \\
-    --backend $BACKEND \\
-    --task entity_tracking \\
-    --data_path "${{EVAL_DIR}}/entity_tracking" \\
-    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+if [ -d "${{EVAL_DIR}}/entity_tracking" ] && [ "$(ls -A ${{EVAL_DIR}}/entity_tracking 2>/dev/null)" ]; then
+    python -m evaluation_pipeline.sentence_zero_shot.run \\
+        --model_path_or_name "$MODEL_ABS_PATH" \\
+        --backend $BACKEND \\
+        --task entity_tracking \\
+        --data_path "${{EVAL_DIR}}/entity_tracking" \\
+        --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+else
+    echo "Entity Tracking data not found or empty, skipping..." | tee "$OUTPUT_FILE"
+fi
+cd /workspace/Evaluation-Values
 save_task_result "{track}" "zero_shot" "entity_tracking" "$OUTPUT_FILE"
+cd ../evaluation-pipeline-2025
 """
                     elif task == 'wug_adj':
                         script_content += f"""
 echo "Running WUG Adjective Nominalization evaluation..."
 OUTPUT_FILE="$RESULTS_DIR/wug_adj_output.log"
-python -m evaluation_pipeline.sentence_zero_shot.run \\
-    --model_path_or_name "$MODEL_ABS_PATH" \\
-    --backend $BACKEND \\
-    --task wug_adj \\
-    --data_path "${{EVAL_DIR}}/wug_adj_nominalization" \\
-    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+if [ -d "${{EVAL_DIR}}/wug_adj_nominalization" ] && [ "$(ls -A ${{EVAL_DIR}}/wug_adj_nominalization 2>/dev/null)" ]; then
+    python -m evaluation_pipeline.sentence_zero_shot.run \\
+        --model_path_or_name "$MODEL_ABS_PATH" \\
+        --backend $BACKEND \\
+        --task wug_adj \\
+        --data_path "${{EVAL_DIR}}/wug_adj_nominalization" \\
+        --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+else
+    echo "WUG Adjective Nominalization data not found or empty, skipping..." | tee "$OUTPUT_FILE"
+fi
+cd /workspace/Evaluation-Values
 save_task_result "{track}" "zero_shot" "wug_adj" "$OUTPUT_FILE"
+cd ../evaluation-pipeline-2025
 """
                     elif task == 'wug_past':
                         script_content += f"""
 echo "Running WUG Past Tense evaluation..."
 OUTPUT_FILE="$RESULTS_DIR/wug_past_output.log"
-python -m evaluation_pipeline.sentence_zero_shot.run \\
-    --model_path_or_name "$MODEL_ABS_PATH" \\
-    --backend $BACKEND \\
-    --task wug_past \\
-    --data_path "${{EVAL_DIR}}/wug_past_tense" \\
-    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+if [ -d "${{EVAL_DIR}}/wug_past_tense" ] && [ "$(ls -A ${{EVAL_DIR}}/wug_past_tense 2>/dev/null)" ]; then
+    python -m evaluation_pipeline.sentence_zero_shot.run \\
+        --model_path_or_name "$MODEL_ABS_PATH" \\
+        --backend $BACKEND \\
+        --task wug_past \\
+        --data_path "${{EVAL_DIR}}/wug_past_tense" \\
+        --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+else
+    echo "WUG Past Tense data not found or empty, skipping..." | tee "$OUTPUT_FILE"
+fi
+cd /workspace/Evaluation-Values
 save_task_result "{track}" "zero_shot" "wug_past" "$OUTPUT_FILE"
+cd ../evaluation-pipeline-2025
 """
                     elif task == 'aoa':
                         script_content += f"""
 echo "Running Age of Acquisition evaluation..."
 OUTPUT_FILE="$RESULTS_DIR/aoa_output.log"
-python -m evaluation_pipeline.AoA_word.run \\
-    --model_name "$MODEL_ABS_PATH" \\
-    --backend $BACKEND \\
-    --track_name {track} \\
-    --word_path "${{EVAL_DIR}}/cdi_childes/cdi_childes.json" \\
-    --output_dir "results" 2>&1 | tee "$OUTPUT_FILE"
+if [ -f "${{EVAL_DIR}}/cdi_childes/cdi_childes.json" ]; then
+    python -m evaluation_pipeline.AoA_word.run \\
+        --model_name "$MODEL_ABS_PATH" \\
+        --backend $BACKEND \\
+        --track_name {track} \\
+        --word_path "${{EVAL_DIR}}/cdi_childes/cdi_childes.json" \\
+        --output_dir "results" 2>&1 | tee "$OUTPUT_FILE"
+else
+    echo "CDI data not found, skipping AoA evaluation..." | tee "$OUTPUT_FILE"
+fi
+cd /workspace/Evaluation-Values
 save_task_result "{track}" "zero_shot" "aoa" "$OUTPUT_FILE"
+cd ../evaluation-pipeline-2025
 """
 
             # Add reading tasks
@@ -347,11 +377,17 @@ save_task_result "{track}" "zero_shot" "aoa" "$OUTPUT_FILE"
                 script_content += f"""
 echo "Running reading evaluation for {track} track..."
 OUTPUT_FILE="$RESULTS_DIR/reading_output.log"
-python -m evaluation_pipeline.reading.run \\
-    --model_path_or_name "$MODEL_ABS_PATH" \\
-    --backend $BACKEND \\
-    --data_path "${{EVAL_DIR}}/reading/reading_data.csv" 2>&1 | tee "$OUTPUT_FILE"
+if [ -f "${{EVAL_DIR}}/reading/reading_data.csv" ]; then
+    python -m evaluation_pipeline.reading.run \\
+        --model_path_or_name "$MODEL_ABS_PATH" \\
+        --backend $BACKEND \\
+        --data_path "${{EVAL_DIR}}/reading/reading_data.csv" 2>&1 | tee "$OUTPUT_FILE"
+else
+    echo "Reading data not found, skipping..." | tee "$OUTPUT_FILE"
+fi
+cd /workspace/Evaluation-Values
 save_task_result "{track}" "reading" "reading_tasks" "$OUTPUT_FILE"
+cd ../evaluation-pipeline-2025
 """
 
             # Add finetuning tasks (only for strict track)
