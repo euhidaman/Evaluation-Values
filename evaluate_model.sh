@@ -45,6 +45,7 @@ if [[ "$MODEL_NAME" == *"bitnet"* ]] || [[ "$MODEL_DIR" == *"bitnet"* ]]; then
     # Set up cleanup on exit
     cleanup_bitnet() {
         echo "Cleaning up BitNet temporary files..."
+        cd /workspace/Evaluation-Values
         python bitnet_wrapper.py cleanup
     }
     trap cleanup_bitnet EXIT

@@ -98,15 +98,25 @@ This will automatically:
 For more control, evaluate models individually:
 
 ```bash
-# BitNet model on strict track
+# BitNet model on STRICT track (RECOMMENDED - includes AoA evaluation)
 bash evaluate_model.sh ./models/microsoft--bitnet-b1.58-2B-4T microsoft--bitnet-b1.58-2B-4T strict causal
 
-# DataDecide model on strict-small track  
-bash evaluate_model.sh ./models/allenai--DataDecide-dolma1_7-no-math-code-14M allenai--DataDecide-dolma1_7-no-math-code-14M strict-small causal
+# DataDecide model on STRICT track 
+bash evaluate_model.sh ./models/allenai--DataDecide-dolma1_7-no-math-code-14M allenai--DataDecide-dolma1_7-no-math-code-14M strict causal
 
-# TinyBERT model on strict track
+# TinyBERT model on STRICT track
 bash evaluate_model.sh ./models/Xuandong--HPD-TinyBERT-F128 Xuandong--HPD-TinyBERT-F128 strict masked
+
+# For faster testing only, use strict-small track (limited evaluation, no AoA):
+bash evaluate_model.sh ./models/microsoft--bitnet-b1.58-2B-4T microsoft--bitnet-b1.58-2B-4T strict-small causal
 ```
+
+**Important**: Use the **strict** track for complete evaluation including:
+- ✅ Age of Acquisition (AoA) evaluation with CDI data
+- ✅ All GLUE fine-tuning tasks  
+- ✅ Complete datasets for all evaluation components
+
+The **strict-small** track is only for quick testing and uses limited datasets without AoA evaluation.
 
 ## Evaluation Components
 
