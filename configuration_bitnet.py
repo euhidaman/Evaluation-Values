@@ -32,7 +32,7 @@ class BitNetConfig(PretrainedConfig):
         use_cache=True,
         tie_word_embeddings=True,
         rope_theta=500000.0,
-        quantization_config=None,
+        attention_dropout=0.0,
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -47,7 +47,7 @@ class BitNetConfig(PretrainedConfig):
         self.rms_norm_eps = rms_norm_eps
         self.use_cache = use_cache
         self.rope_theta = rope_theta
-        self.quantization_config = quantization_config
+        self.attention_dropout = attention_dropout
 
         super().__init__(
             tie_word_embeddings=tie_word_embeddings,
