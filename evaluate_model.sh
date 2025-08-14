@@ -237,7 +237,7 @@ if [ "$TRACK" = "strict" ]; then
 
     # Apply tokenizer fix
     cd /workspace/Evaluation-Values
-    python fix_tokenizer_padding.py
+    python comprehensive_fix.py
     cd ../evaluation-pipeline-2025
 
     # GLUE tasks finetuning
@@ -382,7 +382,7 @@ if [ -f "${EVAL_DIR}/cdi_childes/cdi_childes.json" ]; then
 
     # Apply AoA fix first
     cd /workspace/Evaluation-Values
-    python fix_tokenizer_padding.py
+    python comprehensive_fix.py
     cd ../evaluation-pipeline-2025
 
     OUTPUT_FILE="$RESULTS_DIR/aoa_output.log"
