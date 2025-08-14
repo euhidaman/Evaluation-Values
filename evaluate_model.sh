@@ -111,15 +111,19 @@ fi
 RESULTS_DIR="./results/$MODEL_NAME/$TRACK"
 mkdir -p "$RESULTS_DIR"
 
+# Change to evaluation pipeline directory BEFORE creating the results directory path
+cd ../evaluation-pipeline-2025
+
+# Update RESULTS_DIR to absolute path now that we've changed directories
+RESULTS_DIR="/workspace/Evaluation-Values/results/$MODEL_NAME/$TRACK"
+mkdir -p "$RESULTS_DIR"
+
 echo "Evaluating model: $MODEL_NAME"
 echo "Track: $TRACK"
 echo "Backend: $BACKEND"
 echo "Model directory: $MODEL_ABS_PATH"
 echo "Evaluation data: $EVAL_DIR"
 echo "Results will be saved to: $RESULTS_DIR"
-
-# Change to evaluation pipeline directory
-cd ../evaluation-pipeline-2025
 
 # Set backend for reading task
 if [[ "$BACKEND" == *"enc_dec"* ]]; then
