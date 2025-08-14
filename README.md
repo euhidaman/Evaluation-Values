@@ -84,26 +84,22 @@ D:\BabyLM\
 
 Ensure you have the evaluation pipeline and data in the correct locations:
 
-```cmd
-# Navigate to your BabyLM directory (Windows)
-cd D:\BabyLM
+```bash
+# Navigate to your BabyLM directory
+cd /workspace
 
-# Verify directory structure (Windows)
-dir
-# Should show: evaluation-pipeline-2025\, evaluation_data\, Evaluation-Values\
+# Verify directory structure
+ls -la
+# Should show: evaluation-pipeline-2025/, evaluation_data/, Evaluation-Values/
 ```
 
 ### 2. Setup Python Environment
 
-```cmd
-# Navigate to the evaluation pipeline directory (Windows)
+```bash
+# Navigate to the evaluation pipeline directory
 cd evaluation-pipeline-2025
 
-# Create virtual environment (if not already created)
-python -m venv babylm_eval
-babylm_eval\Scripts\activate
-
-# Install dependencies
+# Install dependencies (if not already installed)
 pip install -r requirements.txt
 
 # Install additional GGUF support
@@ -118,9 +114,9 @@ The NLTK `punkt_tab` error has been fixed in the evaluation pipeline. The fix au
 
 Before running evaluations, test if models can be loaded:
 
-```cmd
-# Copy the compatibility checker to the evaluation pipeline directory (Windows)
-copy ..\Evaluation-Values\check_model_compatibility.py .
+```bash
+# Copy the compatibility checker to the evaluation pipeline directory
+cp ../Evaluation-Values/check_model_compatibility.py .
 
 # Run compatibility check
 python check_model_compatibility.py
@@ -130,9 +126,9 @@ python check_model_compatibility.py
 
 ### Option 1: Standard Evaluation (All Models)
 
-```cmd
-# Copy the standard evaluation script (Windows)
-copy ..\Evaluation-Values\evaluate_models.py .
+```bash
+# Copy the standard evaluation script
+cp ../Evaluation-Values/evaluate_models.py .
 
 # Run all evaluations (fast, full, finetune)
 python evaluate_models.py
@@ -140,9 +136,9 @@ python evaluate_models.py
 
 ### Option 2: GGUF-Focused Evaluation
 
-```cmd
-# Copy the GGUF evaluation script (Windows)
-copy ..\Evaluation-Values\evaluate_gguf_models.py .
+```bash
+# Copy the GGUF evaluation script
+cp ../Evaluation-Values/evaluate_gguf_models.py .
 
 # Run GGUF-optimized evaluations
 python evaluate_gguf_models.py
@@ -152,15 +148,15 @@ python evaluate_gguf_models.py
 
 Run evaluations manually for individual models:
 
-```cmd
-# Fast evaluation (quick test) - Windows
-eval_zero_shot_fast.sh mofosyne/TinyLLama-v0-5M-F16-llamafile main causal ..\evaluation_data\fast_eval
+```bash
+# Fast evaluation (quick test)
+./eval_zero_shot_fast.sh mofosyne/TinyLLama-v0-5M-F16-llamafile main causal ../evaluation_data/fast_eval
 
-# Full evaluation (comprehensive) - Windows
-eval_zero_shot.sh mofosyne/TinyLLama-v0-5M-F16-llamafile causal ..\evaluation_data\full_eval
+# Full evaluation (comprehensive)
+./eval_zero_shot.sh mofosyne/TinyLLama-v0-5M-F16-llamafile causal ../evaluation_data/full_eval
 
-# Fine-tuning evaluation (GLUE tasks) - Windows
-eval_finetuning.sh mofosyne/TinyLLama-v0-5M-F16-llamafile
+# Fine-tuning evaluation (GLUE tasks)
+./eval_finetuning.sh mofosyne/TinyLLama-v0-5M-F16-llamafile
 ```
 
 ## Troubleshooting
