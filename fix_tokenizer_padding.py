@@ -170,20 +170,20 @@ def apply_sentence_zero_shot_fix():
         print("✓ UID KeyError fix already applied")
         return True
 
-    # Find and replace the problematic line
-    old_pattern = 'average_accuracies[temp] = sum(accuracy["UID"].values()) / len(accuracy["UID"].values())'
+    # Find and replace the problematic line with proper indentation
+    old_pattern = '            average_accuracies[temp] = sum(accuracy["UID"].values()) / len(accuracy["UID"].values())'
 
-    new_pattern = '''        # UID KEYERROR FIX - Handle missing UID key
-        if "UID" in accuracy and accuracy["UID"]:
-            average_accuracies[temp] = sum(accuracy["UID"].values()) / len(accuracy["UID"].values())
-        else:
-            # Use first available key if UID is missing
-            available_keys = [k for k in accuracy.keys() if isinstance(accuracy[k], dict) and accuracy[k]]
-            if available_keys:
-                key = available_keys[0]
-                average_accuracies[temp] = sum(accuracy[key].values()) / len(accuracy[key].values())
+    new_pattern = '''            # UID KEYERROR FIX - Handle missing UID key
+            if "UID" in accuracy and accuracy["UID"]:
+                average_accuracies[temp] = sum(accuracy["UID"].values()) / len(accuracy["UID"].values())
             else:
-                average_accuracies[temp] = 0.0'''
+                # Use first available key if UID is missing
+                available_keys = [k for k in accuracy.keys() if isinstance(accuracy[k], dict) and accuracy[k]]
+                if available_keys:
+                    key = available_keys[0]
+                    average_accuracies[temp] = sum(accuracy[key].values()) / len(accuracy[key].values())
+                else:
+                    average_accuracies[temp] = 0.0'''
 
     if old_pattern in content:
         # Create backup
@@ -202,8 +202,51 @@ def apply_sentence_zero_shot_fix():
         return True
     else:
         print("Warning: Could not find the UID KeyError pattern to patch")
-        print("This fix may not be needed or the code structure changed")
-        return True  # Return True to continue
+        print("The file content might have changed. Attempting alternative fix...")
+
+        # Alternative pattern with different spacing
+        alt_pattern = 'average_accuracies[temp] = sum(accuracy["UID"].values()) / len(accuracy["UID"].values())'
+
+        if alt_pattern in content:
+            # Find the exact indentation by looking at surrounding lines
+            lines = content.split('\n')
+            for i, line in enumerate(lines):
+                if alt_pattern.strip() in line:
+                    # Get the indentation from the current line
+                    indent = len(line) - len(line.lstrip())
+
+                    # Create properly indented replacement
+                    new_lines = [
+                        ' ' * indent + '# UID KEYERROR FIX - Handle missing UID key',
+                        ' ' * indent + 'if "UID" in accuracy and accuracy["UID"]:',
+                        ' ' * (indent + 4) + 'average_accuracies[temp] = sum(accuracy["UID"].values()) / len(accuracy["UID"].values())',
+                        ' ' * indent + 'else:',
+                        ' ' * (indent + 4) + '# Use first available key if UID is missing',
+                        ' ' * (indent + 4) + 'available_keys = [k for k in accuracy.keys() if isinstance(accuracy[k], dict) and accuracy[k]]',
+                        ' ' * (indent + 4) + 'if available_keys:',
+                        ' ' * (indent + 8) + 'key = available_keys[0]',
+                        ' ' * (indent + 8) + 'average_accuracies[temp] = sum(accuracy[key].values()) / len(accuracy[key].values())',
+                        ' ' * (indent + 4) + 'else:',
+                        ' ' * (indent + 8) + 'average_accuracies[temp] = 0.0'
+                    ]
+
+                    # Replace the line
+                    lines[i] = '\n'.join(new_lines)
+
+                    # Create backup
+                    backup_file = run_file.with_suffix('.py.backup')
+                    shutil.copy2(run_file, backup_file)
+                    print(f"✓ Created backup: {backup_file}")
+
+                    # Write the fixed content
+                    with open(run_file, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(lines))
+
+                    print(f"✓ Applied UID KeyError fix to {run_file}")
+                    return True
+
+        print("Error: Could not find any pattern to fix")
+        return False
 
 def cleanup_fixes():
     """Remove applied fixes and restore backups"""
