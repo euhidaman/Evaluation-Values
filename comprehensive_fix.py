@@ -66,33 +66,69 @@ def apply_dataset_fix():
     shutil.copy2(dataset_file, backup_file)
     print(f"✓ Created backup: {backup_file}")
 
-    # Apply fix by inserting the tokenizer fix before the encodings line
-    lines = content.split('\n')
-    new_lines = []
+    # Find and replace the problematic pattern
+    # Look for the exact pattern that needs to be replaced
+    old_pattern = """        labels = torch.tensor(labels, dtype=torch.long)
+        encodings = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_length)"""
 
-    for i, line in enumerate(lines):
-        if 'encodings = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_length)' in line:
-            # Get the indentation of the current line
-            indent = len(line) - len(line.lstrip())
+    new_pattern = """        labels = torch.tensor(labels, dtype=torch.long)
+        
+        # TOKENIZER PADDING FIX - Set pad token if not present
+        if tokenizer.pad_token is None:
+            if tokenizer.eos_token is not None:
+                tokenizer.pad_token = tokenizer.eos_token
+            else:
+                tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        
+        encodings = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_length)"""
 
-            # Add the tokenizer fix with proper indentation
-            new_lines.append(' ' * indent + '# TOKENIZER PADDING FIX - Set pad token if not present')
-            new_lines.append(' ' * indent + 'if tokenizer.pad_token is None:')
-            new_lines.append(' ' * (indent + 4) + 'if tokenizer.eos_token is not None:')
-            new_lines.append(' ' * (indent + 8) + 'tokenizer.pad_token = tokenizer.eos_token')
-            new_lines.append(' ' * (indent + 4) + 'else:')
-            new_lines.append(' ' * (indent + 8) + 'tokenizer.add_special_tokens({\'pad_token\': \'[PAD]\'})')
-            new_lines.append('')
-            new_lines.append(line)  # Add the original encodings line
+    if old_pattern in content:
+        content = content.replace(old_pattern, new_pattern)
+
+        # Write the fixed content
+        with open(dataset_file, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        print(f"✓ Applied tokenizer padding fix to {dataset_file}")
+        return True
+    else:
+        print("Warning: Could not find the exact pattern to replace")
+        print("Attempting alternative fix...")
+
+        # Alternative approach - find just the encodings line and insert fix before it
+        lines = content.split('\n')
+        new_lines = []
+        fixed = False
+
+        for i, line in enumerate(lines):
+            if 'encodings = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_length)' in line and not fixed:
+                # Get the indentation of the current line
+                indent = len(line) - len(line.lstrip())
+
+                # Add the tokenizer fix with proper indentation
+                new_lines.append('')
+                new_lines.append(' ' * indent + '# TOKENIZER PADDING FIX - Set pad token if not present')
+                new_lines.append(' ' * indent + 'if tokenizer.pad_token is None:')
+                new_lines.append(' ' * (indent + 4) + 'if tokenizer.eos_token is not None:')
+                new_lines.append(' ' * (indent + 8) + 'tokenizer.pad_token = tokenizer.eos_token')
+                new_lines.append(' ' * (indent + 4) + 'else:')
+                new_lines.append(' ' * (indent + 8) + 'tokenizer.add_special_tokens({\'pad_token\': \'[PAD]\'})')
+                new_lines.append('')
+                new_lines.append(line)  # Add the original encodings line
+                fixed = True
+            else:
+                new_lines.append(line)
+
+        if fixed:
+            # Write the fixed content
+            with open(dataset_file, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(new_lines))
+
+            print(f"✓ Applied alternative tokenizer padding fix to {dataset_file}")
+            return True
         else:
-            new_lines.append(line)
-
-    # Write the fixed content
-    with open(dataset_file, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(new_lines))
-
-    print(f"✓ Applied tokenizer padding fix to {dataset_file}")
-    return True
+            print("Error: Could not apply tokenizer padding fix")
+            return False
 
 def apply_sentence_zero_shot_fix():
     """Fix the UID KeyError in sentence zero shot evaluation"""
