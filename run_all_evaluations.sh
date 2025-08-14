@@ -17,10 +17,14 @@ tracks=("strict" "strict-small")
 # Create results directory
 mkdir -p results
 
+# Get the current directory (should be Evaluation-Values)
+CURRENT_DIR=$(pwd)
+echo "Working directory: $CURRENT_DIR"
+
 # Loop through each model and track
 for model_dir in "${!models[@]}"; do
     backend=${models[$model_dir]}
-    model_path="./models/$model_dir"
+    model_path="$CURRENT_DIR/models/$model_dir"
 
     echo ""
     echo "Processing model: $model_dir"
@@ -30,6 +34,13 @@ for model_dir in "${!models[@]}"; do
     if [ ! -d "$model_path" ]; then
         echo "ERROR: Model directory not found: $model_path"
         echo "Please run download_models.py first"
+        continue
+    fi
+
+    # Check if model has config.json
+    if [ ! -f "$model_path/config.json" ]; then
+        echo "ERROR: config.json not found in $model_path"
+        echo "Please ensure the model was downloaded correctly"
         continue
     fi
 

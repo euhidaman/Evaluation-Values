@@ -17,6 +17,22 @@ if [ -z "$MODEL_DIR" ] || [ -z "$MODEL_NAME" ] || [ -z "$TRACK" ]; then
     exit 1
 fi
 
+# Convert to absolute path
+MODEL_ABS_PATH=$(realpath "$MODEL_DIR")
+
+# Check if model directory exists
+if [ ! -d "$MODEL_ABS_PATH" ]; then
+    echo "Error: Model directory does not exist: $MODEL_ABS_PATH"
+    exit 1
+fi
+
+# Check if model has required files
+if [ ! -f "$MODEL_ABS_PATH/config.json" ]; then
+    echo "Error: config.json not found in model directory: $MODEL_ABS_PATH"
+    echo "Please ensure the model was downloaded correctly."
+    exit 1
+fi
+
 # Set evaluation data directory based on track
 if [ "$TRACK" = "strict-small" ]; then
     EVAL_DIR="../evaluation_data/fast_eval"
@@ -33,7 +49,7 @@ mkdir -p "$RESULTS_DIR"
 echo "Evaluating model: $MODEL_NAME"
 echo "Track: $TRACK"
 echo "Backend: $BACKEND"
-echo "Model directory: $MODEL_DIR"
+echo "Model directory: $MODEL_ABS_PATH"
 echo "Evaluation data: $EVAL_DIR"
 echo "Results will be saved to: $RESULTS_DIR"
 
@@ -53,7 +69,7 @@ echo "Starting zero-shot evaluations..."
 echo "Running BLiMP evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task blimp \
         --data_path "${EVAL_DIR}/blimp_fast" \
@@ -61,7 +77,7 @@ if [ "$TRACK" = "strict-small" ]; then
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task blimp \
         --data_path "${EVAL_DIR}/blimp_filtered" \
@@ -72,7 +88,7 @@ fi
 echo "Running BLiMP Supplement evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task blimp \
         --data_path "${EVAL_DIR}/supplement_fast" \
@@ -80,7 +96,7 @@ if [ "$TRACK" = "strict-small" ]; then
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task blimp \
         --data_path "${EVAL_DIR}/supplement_filtered" \
@@ -91,7 +107,7 @@ fi
 echo "Running EWoK evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task ewok \
         --data_path "${EVAL_DIR}/ewok_fast" \
@@ -99,7 +115,7 @@ if [ "$TRACK" = "strict-small" ]; then
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task ewok \
         --data_path "${EVAL_DIR}/ewok_filtered" \
@@ -110,7 +126,7 @@ fi
 echo "Running Entity Tracking evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task entity_tracking \
         --data_path "${EVAL_DIR}/entity_tracking_fast" \
@@ -118,7 +134,7 @@ if [ "$TRACK" = "strict-small" ]; then
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task entity_tracking \
         --data_path "${EVAL_DIR}/entity_tracking" \
@@ -129,7 +145,7 @@ fi
 echo "Running WUG Adjective Nominalization evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task wug_adj \
         --data_path "${EVAL_DIR}/wug_adj_nominalization" \
@@ -137,7 +153,7 @@ if [ "$TRACK" = "strict-small" ]; then
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task wug_adj \
         --data_path "${EVAL_DIR}/wug_adj_nominalization" \
@@ -148,7 +164,7 @@ fi
 echo "Running WUG Past Tense evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task wug_past \
         --data_path "${EVAL_DIR}/wug_past_tense" \
@@ -156,7 +172,7 @@ if [ "$TRACK" = "strict-small" ]; then
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task wug_past \
         --data_path "${EVAL_DIR}/wug_past_tense" \
@@ -167,7 +183,7 @@ fi
 if [ "$TRACK" != "strict-small" ]; then
     echo "Running COMPS evaluation..."
     python -m evaluation_pipeline.sentence_zero_shot.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --task comps \
         --data_path "${EVAL_DIR}/comps" \
@@ -178,13 +194,13 @@ fi
 echo "Running Reading evaluation..."
 if [ "$TRACK" = "strict-small" ]; then
     python -m evaluation_pipeline.reading.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND_READ \
         --data_path "${EVAL_DIR}/reading/reading_data.csv" \
         --revision_name $TRACK
 else
     python -m evaluation_pipeline.reading.run \
-        --model_path_or_name "$MODEL_DIR" \
+        --model_path_or_name "$MODEL_ABS_PATH" \
         --backend $BACKEND_READ \
         --data_path "${EVAL_DIR}/reading/reading_data.csv"
 fi
@@ -206,7 +222,7 @@ if [ "$TRACK" != "strict-small" ]; then
     for task in boolq multirc; do
         echo "Finetuning on $task..."
         python -m evaluation_pipeline.finetune.run \
-            --model_name_or_path "$MODEL_DIR" \
+            --model_name_or_path "$MODEL_ABS_PATH" \
             --train_data "${EVAL_DIR}/glue_filtered/$task.train.jsonl" \
             --valid_data "${EVAL_DIR}/glue_filtered/$task.valid.jsonl" \
             --predict_data "${EVAL_DIR}/glue_filtered/$task.valid.jsonl" \
@@ -228,7 +244,7 @@ if [ "$TRACK" != "strict-small" ]; then
     # RTE task
     echo "Finetuning on RTE..."
     python -m evaluation_pipeline.finetune.run \
-        --model_name_or_path "$MODEL_DIR" \
+        --model_name_or_path "$MODEL_ABS_PATH" \
         --train_data "${EVAL_DIR}/glue_filtered/rte.train.jsonl" \
         --valid_data "${EVAL_DIR}/glue_filtered/rte.valid.jsonl" \
         --predict_data "${EVAL_DIR}/glue_filtered/rte.valid.jsonl" \
@@ -249,7 +265,7 @@ if [ "$TRACK" != "strict-small" ]; then
     # WSC task
     echo "Finetuning on WSC..."
     python -m evaluation_pipeline.finetune.run \
-        --model_name_or_path "$MODEL_DIR" \
+        --model_name_or_path "$MODEL_ABS_PATH" \
         --train_data "${EVAL_DIR}/glue_filtered/wsc.train.jsonl" \
         --valid_data "${EVAL_DIR}/glue_filtered/wsc.valid.jsonl" \
         --predict_data "${EVAL_DIR}/glue_filtered/wsc.valid.jsonl" \
@@ -271,7 +287,7 @@ if [ "$TRACK" != "strict-small" ]; then
     for task in mrpc qqp; do
         echo "Finetuning on $task..."
         python -m evaluation_pipeline.finetune.run \
-            --model_name_or_path "$MODEL_DIR" \
+            --model_name_or_path "$MODEL_ABS_PATH" \
             --train_data "${EVAL_DIR}/glue_filtered/$task.train.jsonl" \
             --valid_data "${EVAL_DIR}/glue_filtered/$task.valid.jsonl" \
             --predict_data "${EVAL_DIR}/glue_filtered/$task.valid.jsonl" \
@@ -293,7 +309,7 @@ if [ "$TRACK" != "strict-small" ]; then
     # MNLI task
     echo "Finetuning on MNLI..."
     python -m evaluation_pipeline.finetune.run \
-        --model_name_or_path "$MODEL_DIR" \
+        --model_name_or_path "$MODEL_ABS_PATH" \
         --train_data "${EVAL_DIR}/glue_filtered/mnli.train.jsonl" \
         --valid_data "${EVAL_DIR}/glue_filtered/mnli.valid.jsonl" \
         --predict_data "${EVAL_DIR}/glue_filtered/mnli.valid.jsonl" \
@@ -318,7 +334,7 @@ fi
 if [ -f "${EVAL_DIR}/cdi_childes/cdi_childes.json" ]; then
     echo "Running Age of Acquisition evaluation..."
     python -m evaluation_pipeline.AoA_word.run \
-        --model_name "$MODEL_DIR" \
+        --model_name "$MODEL_ABS_PATH" \
         --backend $BACKEND \
         --track_name $TRACK \
         --word_path "${EVAL_DIR}/cdi_childes/cdi_childes.json" \
