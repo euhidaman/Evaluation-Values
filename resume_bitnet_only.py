@@ -180,31 +180,311 @@ cd /workspace/Evaluation-Values
 echo "Applying evaluation pipeline fixes..."
 python comprehensive_fix.py
 
+# Initialize real-time results saving
+python -c "
+from realtime_results_saver import start_model_evaluation
+start_model_evaluation('microsoft--bitnet-b1.58-2B-4T', 'strict')
+print('✓ Results tracking initialized for BitNet strict track')
+"
+
+MODEL_NAME="microsoft--bitnet-b1.58-2B-4T"
+MODEL_ABS_PATH="/workspace/Evaluation-Values/models/microsoft--bitnet-b1.58-2B-4T"
+BACKEND="causal"
+
+# Helper function to save task results
+save_task_result() {
+    local track=$1
+    local task_type=$2
+    local task_name=$3
+    local output_file=$4
+    
+    cd /workspace/Evaluation-Values
+    python -c "
+import sys
+from realtime_results_saver import save_task_result
+
+# Read output file
+try:
+    with open('$output_file', 'r', encoding='utf-8') as f:
+        output_text = f.read()
+except:
+    output_text = ''
+
+save_task_result('$MODEL_NAME', '$track', '$task_type', '$task_name', {}, output_text)
+print('✓ Saved $task_type results for $task_name')
+"
+}
+
+# BitNet model setup
+echo "Setting up BitNet model files..."
+python bitnet_wrapper.py
+
+cleanup_bitnet() {
+    echo "Cleaning up BitNet temporary files..."
+    cd /workspace/Evaluation-Values
+    python bitnet_wrapper.py cleanup
+}
+trap cleanup_bitnet EXIT
+
+# Set evaluation data directory
+EVAL_DIR="../evaluation_data/full_eval"
+
 """
 
-    evaluation_count = 0
-
-    for track, task_types in remaining_tasks.items():
-        total_tasks = sum(len(tasks) for tasks in task_types.values())
+    # Check which tasks need to be run for each track
+    for track in ['strict', 'strict-small']:
+        track_tasks = remaining_tasks[track]
+        total_tasks = sum(len(tasks) for tasks in track_tasks.values())
 
         if total_tasks > 0:
-            evaluation_count += 1
-
             script_content += f"""
 echo ""
-echo "Resuming BitNet evaluation on {track} track"
-echo "Tasks remaining: {total_tasks}"
-echo "Backend: causal"
-bash evaluate_model.sh ./models/microsoft--bitnet-b1.58-2B-4T microsoft--bitnet-b1.58-2B-4T {track} causal
+echo "Processing BitNet {track} track - {total_tasks} tasks remaining"
+echo "=" * 60
 
-if [ $? -eq 0 ]; then
-    echo "✓ Successfully completed {track} evaluation for BitNet"
-else
-    echo "✗ Failed {track} evaluation for BitNet"
-fi
+# Create results directory for {track} track
+RESULTS_DIR="/workspace/Evaluation-Values/results/$MODEL_NAME/{track}"
+mkdir -p "$RESULTS_DIR"
+
+cd ../evaluation-pipeline-2025
+
 """
 
-    if evaluation_count == 0:
+            # Add zero-shot tasks
+            if track_tasks['zero_shot']:
+                script_content += f"""
+echo "Running remaining zero-shot evaluations for {track} track..."
+"""
+
+                for task in track_tasks['zero_shot']:
+                    if task == 'blimp':
+                        script_content += f"""
+echo "Running BLiMP evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/blimp_output.log"
+python -m evaluation_pipeline.sentence_zero_shot.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --task blimp \\
+    --data_path "${{EVAL_DIR}}/blimp_filtered" \\
+    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "blimp" "$OUTPUT_FILE"
+"""
+                    elif task == 'blimp_supplement':
+                        script_content += f"""
+echo "Running BLiMP Supplement evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/blimp_supplement_output.log"
+python -m evaluation_pipeline.sentence_zero_shot.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --task blimp \\
+    --data_path "${{EVAL_DIR}}/supplement_filtered" \\
+    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "blimp_supplement" "$OUTPUT_FILE"
+"""
+                    elif task == 'ewok':
+                        script_content += f"""
+echo "Running EWoK evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/ewok_output.log"
+python -m evaluation_pipeline.sentence_zero_shot.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --task ewok \\
+    --data_path "${{EVAL_DIR}}/ewok_filtered" \\
+    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "ewok" "$OUTPUT_FILE"
+"""
+                    elif task == 'entity_tracking':
+                        script_content += f"""
+echo "Running Entity Tracking evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/entity_tracking_output.log"
+python -m evaluation_pipeline.sentence_zero_shot.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --task entity_tracking \\
+    --data_path "${{EVAL_DIR}}/entity_tracking" \\
+    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "entity_tracking" "$OUTPUT_FILE"
+"""
+                    elif task == 'wug_adj':
+                        script_content += f"""
+echo "Running WUG Adjective Nominalization evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/wug_adj_output.log"
+python -m evaluation_pipeline.sentence_zero_shot.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --task wug_adj \\
+    --data_path "${{EVAL_DIR}}/wug_adj_nominalization" \\
+    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "wug_adj" "$OUTPUT_FILE"
+"""
+                    elif task == 'wug_past':
+                        script_content += f"""
+echo "Running WUG Past Tense evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/wug_past_output.log"
+python -m evaluation_pipeline.sentence_zero_shot.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --task wug_past \\
+    --data_path "${{EVAL_DIR}}/wug_past_tense" \\
+    --save_predictions 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "wug_past" "$OUTPUT_FILE"
+"""
+                    elif task == 'aoa':
+                        script_content += f"""
+echo "Running Age of Acquisition evaluation..."
+OUTPUT_FILE="$RESULTS_DIR/aoa_output.log"
+python -m evaluation_pipeline.AoA_word.run \\
+    --model_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --track_name {track} \\
+    --word_path "${{EVAL_DIR}}/cdi_childes/cdi_childes.json" \\
+    --output_dir "results" 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "zero_shot" "aoa" "$OUTPUT_FILE"
+"""
+
+            # Add reading tasks
+            if track_tasks['reading']:
+                script_content += f"""
+echo "Running reading evaluation for {track} track..."
+OUTPUT_FILE="$RESULTS_DIR/reading_output.log"
+python -m evaluation_pipeline.reading.run \\
+    --model_path_or_name "$MODEL_ABS_PATH" \\
+    --backend $BACKEND \\
+    --data_path "${{EVAL_DIR}}/reading/reading_data.csv" 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "reading" "reading_tasks" "$OUTPUT_FILE"
+"""
+
+            # Add finetuning tasks (only for strict track)
+            if track == 'strict' and track_tasks['finetuning']:
+                script_content += f"""
+echo "Running finetuning evaluations for {track} track..."
+echo "Applying comprehensive fix before finetuning..."
+cd /workspace/Evaluation-Values
+python comprehensive_fix.py
+cd ../evaluation-pipeline-2025
+
+# GLUE task parameters
+LR=3e-5
+BSZ=32
+BIG_BSZ=16
+MAX_EPOCHS=10
+WSC_EPOCHS=30
+SEED=42
+"""
+
+                for task in track_tasks['finetuning']:
+                    if task in ['boolq', 'multirc']:
+                        script_content += f"""
+echo "Finetuning on {task}..."
+OUTPUT_FILE="$RESULTS_DIR/finetune_{task}_output.log"
+python -m evaluation_pipeline.finetune.run \\
+    --model_name_or_path "$MODEL_ABS_PATH" \\
+    --train_data "${{EVAL_DIR}}/glue_filtered/{task}.train.jsonl" \\
+    --valid_data "${{EVAL_DIR}}/glue_filtered/{task}.valid.jsonl" \\
+    --predict_data "${{EVAL_DIR}}/glue_filtered/{task}.valid.jsonl" \\
+    --task "{task}" \\
+    --num_labels 2 \\
+    --batch_size $BIG_BSZ \\
+    --learning_rate $LR \\
+    --num_epochs $MAX_EPOCHS \\
+    --sequence_length 512 \\
+    --results_dir "results" \\
+    --save \\
+    --save_dir "models" \\
+    --metrics accuracy f1 mcc \\
+    --metric_for_valid accuracy \\
+    --seed $SEED \\
+    --verbose 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "finetuning" "{task}" "$OUTPUT_FILE"
+"""
+                    elif task == 'wsc':
+                        script_content += f"""
+echo "Finetuning on WSC..."
+OUTPUT_FILE="$RESULTS_DIR/finetune_wsc_output.log"
+python -m evaluation_pipeline.finetune.run \\
+    --model_name_or_path "$MODEL_ABS_PATH" \\
+    --train_data "${{EVAL_DIR}}/glue_filtered/wsc.train.jsonl" \\
+    --valid_data "${{EVAL_DIR}}/glue_filtered/wsc.valid.jsonl" \\
+    --predict_data "${{EVAL_DIR}}/glue_filtered/wsc.valid.jsonl" \\
+    --task "wsc" \\
+    --num_labels 2 \\
+    --batch_size $BSZ \\
+    --learning_rate $LR \\
+    --num_epochs $WSC_EPOCHS \\
+    --sequence_length 512 \\
+    --results_dir "results" \\
+    --save \\
+    --save_dir "models" \\
+    --metrics accuracy f1 mcc \\
+    --metric_for_valid accuracy \\
+    --seed $SEED \\
+    --verbose 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "finetuning" "wsc" "$OUTPUT_FILE"
+"""
+                    elif task in ['mrpc', 'qqp']:
+                        script_content += f"""
+echo "Finetuning on {task}..."
+OUTPUT_FILE="$RESULTS_DIR/finetune_{task}_output.log"
+python -m evaluation_pipeline.finetune.run \\
+    --model_name_or_path "$MODEL_ABS_PATH" \\
+    --train_data "${{EVAL_DIR}}/glue_filtered/{task}.train.jsonl" \\
+    --valid_data "${{EVAL_DIR}}/glue_filtered/{task}.valid.jsonl" \\
+    --predict_data "${{EVAL_DIR}}/glue_filtered/{task}.valid.jsonl" \\
+    --task "{task}" \\
+    --num_labels 2 \\
+    --batch_size $BSZ \\
+    --learning_rate $LR \\
+    --num_epochs $MAX_EPOCHS \\
+    --sequence_length 512 \\
+    --results_dir "results" \\
+    --save \\
+    --save_dir "models" \\
+    --metrics accuracy f1 mcc \\
+    --metric_for_valid f1 \\
+    --seed $SEED \\
+    --verbose 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "finetuning" "{task}" "$OUTPUT_FILE"
+"""
+                    elif task in ['rte', 'mnli']:
+                        num_labels = 3 if task == 'mnli' else 2
+                        script_content += f"""
+echo "Finetuning on {task}..."
+OUTPUT_FILE="$RESULTS_DIR/finetune_{task}_output.log"
+python -m evaluation_pipeline.finetune.run \\
+    --model_name_or_path "$MODEL_ABS_PATH" \\
+    --train_data "${{EVAL_DIR}}/glue_filtered/{task}.train.jsonl" \\
+    --valid_data "${{EVAL_DIR}}/glue_filtered/{task}.valid.jsonl" \\
+    --predict_data "${{EVAL_DIR}}/glue_filtered/{task}.valid.jsonl" \\
+    --task "{task}" \\
+    --num_labels {num_labels} \\
+    --batch_size $BSZ \\
+    --learning_rate $LR \\
+    --num_epochs $MAX_EPOCHS \\
+    --sequence_length 512 \\
+    --results_dir "results" \\
+    --save \\
+    --save_dir "models" \\
+    --metrics accuracy f1 mcc \\
+    --metric_for_valid accuracy \\
+    --seed $SEED \\
+    --verbose 2>&1 | tee "$OUTPUT_FILE"
+save_task_result "{track}" "finetuning" "{task}" "$OUTPUT_FILE"
+"""
+
+            script_content += f"""
+# Mark {track} track as complete
+cd /workspace/Evaluation-Values
+python -c "
+from realtime_results_saver import complete_model_evaluation
+complete_model_evaluation('$MODEL_NAME', '{track}', '$BACKEND')
+print('✓ Completed BitNet {track} track evaluation')
+"
+"""
+
+    # Check if no tasks remain
+    total_remaining = sum(sum(len(tasks) for tasks in track_tasks.values()) for track_tasks in remaining_tasks.values())
+
+    if total_remaining == 0:
         script_content += """
 echo "🎉 BitNet evaluation is already completed!"
 echo "No remaining tasks to run."
@@ -216,10 +496,7 @@ summary = get_summary()
 print()
 print('BITNET EVALUATION SUMMARY')
 print('=' * 30)
-if 'microsoft--bitnet-b1.58-2B-4T' in summary.get('models_evaluated', []):
-    print('✓ BitNet evaluation completed')
-else:
-    print('? BitNet evaluation status unknown')
+print('✓ BitNet evaluation completed')
 print()
 print('✓ Results saved to: evaluation_results.json')
 "
@@ -227,8 +504,9 @@ print('✓ Results saved to: evaluation_results.json')
     else:
         script_content += f"""
 echo ""
-echo "Completed BitNet resume script - {evaluation_count} track(s) processed"
-echo "Final results available in: evaluation_results.json"
+echo "✓ Completed BitNet resume script - all remaining tasks processed"
+echo "✓ Results continuously saved to: evaluation_results.json"
+echo "✓ Individual task results saved after each evaluation"
 """
 
     # Write the script
@@ -237,9 +515,10 @@ echo "Final results available in: evaluation_results.json"
 
     os.chmod("resume_bitnet.sh", 0o755)
     print(f"\n✓ Created resume_bitnet.sh script")
-    print(f"✓ {evaluation_count} BitNet track(s) will be processed")
+    print(f"✓ Will process {total_remaining} remaining BitNet tasks")
+    print("✓ Results will be saved after each individual evaluation")
 
-    return evaluation_count
+    return total_remaining
 
 def main():
     """Main function to check BitNet status and create resume script"""
