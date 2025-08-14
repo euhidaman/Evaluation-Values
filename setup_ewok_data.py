@@ -48,25 +48,19 @@ def setup_ewok_data():
                     outfile.write(json.dumps(item, ensure_ascii=False) + "\n")
                     total_examples += 1
 
-            # Also save a subset to fast_eval
+            # Also save a subset to fast_eval (first 20% of items)
+            fast_items = items[:max(1, len(items) // 5)]
             fast_file = ewok_fast_dir / f"{domain}.jsonl"
-            subset_items = items[:min(len(items)//2, 50)]  # Take up to 50 items for fast eval
             with open(fast_file, 'w', encoding='utf-8') as outfile:
-                for item in subset_items:
+                for item in fast_items:
                     outfile.write(json.dumps(item, ensure_ascii=False) + "\n")
 
-            print(f"✓ Domain '{domain}': {len(items)} examples (full), {len(subset_items)} examples (fast)")
-
-        print(f"\n✓ Successfully set up EWoK data with {total_examples} total examples")
+        print(f"Successfully saved {total_examples} examples to EWoK data files")
         return True
 
     except Exception as e:
-        print(f"Failed to download EWoK data: {e}")
-
-        # Create minimal test data as fallback
-        print("Creating minimal EWoK test data...")
-        create_minimal_ewok_fallback(ewok_full_dir, ewok_fast_dir)
-        return True
+        print(f"Error setting up EWoK data: {e}")
+        return False
 
 def create_minimal_ewok_fallback(ewok_full_dir, ewok_fast_dir):
     """Create minimal EWoK test data as fallback"""
