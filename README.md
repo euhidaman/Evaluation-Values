@@ -56,316 +56,153 @@ The evaluation includes the following text-only tasks:
 - **Reading Comprehension**
 - **Fine-tuning on GLUE tasks** (BoolQ, MultiRC, RTE)
 
-## Setup Instructions
+## Directory Structure
 
-### 1. Clone the Evaluation Pipeline
-
-```bash
-# Clone the official evaluation pipeline
-git clone https://github.com/babylm/evaluation-pipeline-2025.git
-cd evaluation-pipeline-2025
-```
-
-### 2. Setup Evaluation Data
-
-The evaluation data should already be available in the parent directory as `../evaluation_data/`. 
-The directory structure should look like this:
+The correct directory structure should be:
 
 ```
-BabyLM/
-├── evaluation-pipeline-2025/
+D:\BabyLM\
+├── evaluation-pipeline-2025/          # Main evaluation pipeline
 │   ├── evaluation_pipeline/
 │   ├── eval_zero_shot.sh
-│   └── ...
-├── evaluation_data/
+│   ├── eval_zero_shot_fast.sh
+│   ├── eval_finetuning.sh
+│   └── requirements.txt
+├── evaluation_data/                   # Evaluation datasets
 │   ├── fast_eval/
 │   └── full_eval/
-└── Evaluation-Values/
+└── Evaluation-Values/                 # This repository
     ├── evaluate_models.py
+    ├── evaluate_gguf_models.py
+    ├── check_model_compatibility.py
     └── README.md
 ```
 
-If evaluation_data is not present, download it from OSF:
-```bash
-# From the BabyLM parent directory
-wget -O evaluation_data.zip "https://osf.io/ryjfm/download"
-unzip evaluation_data.zip
+## Setup Instructions
+
+### 1. Prerequisites
+
+Ensure you have the evaluation pipeline and data in the correct locations:
+
+```cmd
+# Navigate to your BabyLM directory (Windows)
+cd D:\BabyLM
+
+# Verify directory structure (Windows)
+dir
+# Should show: evaluation-pipeline-2025\, evaluation_data\, Evaluation-Values\
 ```
 
-### 3. Setup Python Environment
+### 2. Setup Python Environment
 
-```bash
-# Create virtual environment
+```cmd
+# Navigate to the evaluation pipeline directory (Windows)
+cd evaluation-pipeline-2025
+
+# Create virtual environment (if not already created)
 python -m venv babylm_eval
-source babylm_eval/bin/activate  # On Windows: babylm_eval\Scripts\activate
+babylm_eval\Scripts\activate
 
-# Install requirements
+# Install dependencies
 pip install -r requirements.txt
+
+# Install additional GGUF support
+pip install gguf>=0.10.0
 ```
 
-### 4. Setup HuggingFace Access
+### 3. Fix NLTK Dependencies
 
-```bash
-# Login to HuggingFace (required for model access)
-huggingface-cli login
-# Enter your HuggingFace token when prompted
+The NLTK `punkt_tab` error has been fixed in the evaluation pipeline. The fix automatically downloads required NLTK data when running EWoK evaluations.
+
+### 4. Test Model Compatibility
+
+Before running evaluations, test if models can be loaded:
+
+```cmd
+# Copy the compatibility checker to the evaluation pipeline directory (Windows)
+copy ..\Evaluation-Values\check_model_compatibility.py .
+
+# Run compatibility check
+python check_model_compatibility.py
 ```
 
-### 5. Download EWoK Data (Special Setup)
+## Usage
 
-```bash
-# EWoK requires special access - run this after HF login
-python -m evaluation_pipeline.ewok.dl_and_filter
+### Option 1: Standard Evaluation (All Models)
 
-# For fast EWoK data (password: BabyLM2025)
-cd evaluation_data/fast_eval
-unzip ewok_fast.zip
-# Enter password: BabyLM2025
-cd ../..
-```
+```cmd
+# Copy the standard evaluation script (Windows)
+copy ..\Evaluation-Values\evaluate_models.py .
 
-## Running Evaluations
-
-### Option 1: Automated Evaluation Script
-
-Copy the `evaluate_models.py` script to the evaluation-pipeline-2025 directory and run:
-
-```bash
+# Run all evaluations (fast, full, finetune)
 python evaluate_models.py
 ```
 
-This will automatically run all evaluations (fast, full, and fine-tuning) for all three models.
+### Option 2: GGUF-Focused Evaluation
 
-### Option 2: Manual Evaluation Commands
+```cmd
+# Copy the GGUF evaluation script (Windows)
+copy ..\Evaluation-Values\evaluate_gguf_models.py .
 
-#### Fast Evaluation (Quick Testing)
-
-```bash
-# TinyLLama-v0-5M-F16
-./eval_zero_shot_fast.sh mofosyne/TinyLLama-v0-5M-F16-llamafile main causal
-
-# BitNet-b1.58-2B-4T
-./eval_zero_shot_fast.sh microsoft/bitnet-b1.58-2B-4T-gguf main causal
-
-# DataDecide-dolma1_7-no-math-code-14M
-./eval_zero_shot_fast.sh allenai/DataDecide-dolma1_7-no-math-code-14M main causal
+# Run GGUF-optimized evaluations
+python evaluate_gguf_models.py
 ```
 
-#### Full Evaluation (Comprehensive)
+### Option 3: Manual Evaluation
 
-```bash
-# TinyLLama-v0-5M-F16
-./eval_zero_shot.sh mofosyne/TinyLLama-v0-5M-F16-llamafile causal
+Run evaluations manually for individual models:
 
-# BitNet-b1.58-2B-4T
-./eval_zero_shot.sh microsoft/bitnet-b1.58-2B-4T-gguf causal
+```cmd
+# Fast evaluation (quick test) - Windows
+eval_zero_shot_fast.sh mofosyne/TinyLLama-v0-5M-F16-llamafile main causal ..\evaluation_data\fast_eval
 
-# DataDecide-dolma1_7-no-math-code-14M
-./eval_zero_shot.sh allenai/DataDecide-dolma1_7-no-math-code-14M causal
+# Full evaluation (comprehensive) - Windows
+eval_zero_shot.sh mofosyne/TinyLLama-v0-5M-F16-llamafile causal ..\evaluation_data\full_eval
+
+# Fine-tuning evaluation (GLUE tasks) - Windows
+eval_finetuning.sh mofosyne/TinyLLama-v0-5M-F16-llamafile
 ```
-
-#### Fine-tuning Evaluation (GLUE Tasks)
-
-```bash
-# TinyLLama-v0-5M-F16
-./eval_finetuning.sh mofosyne/TinyLLama-v0-5M-F16-llamafile
-
-# BitNet-b1.58-2B-4T
-./eval_finetuning.sh microsoft/bitnet-b1.58-2B-4T-gguf
-
-# DataDecide-dolma1_7-no-math-code-14M
-./eval_finetuning.sh allenai/DataDecide-dolma1_7-no-math-code-14M
-```
-
-## Expected Results Structure
-
-After running evaluations, results will be stored in the `results/` directory:
-
-```
-results/
-├── TinyLLama-v0-5M-F16-llamafile/
-│   ├── main/
-│   │   ├── finetune/
-│   │   │   ├── boolq/
-│   │   │   ├── multirc/
-│   │   │   └── rte/
-│   │   └── zero_shot/
-│   │       └── causal/
-│   │           ├── blimp/
-│   │           ├── ewok/
-│   │           ├── entity_tracking/
-│   │           ├── wug_adj/
-│   │           ├── wug_past/
-│   │           └── reading/
-├── bitnet-b1.58-2B-4T-gguf/
-│   └── ...
-└── DataDecide-dolma1_7-no-math-code-14M/
-    └── ...
-```
-
-## Individual Task Commands
-
-If you want to run specific tasks manually:
-
-### Zero-shot Tasks
-
-```bash
-# BLiMP evaluation
-python -m evaluation_pipeline.sentence_zero_shot.run \
-    --model_path_or_name MODEL_PATH \
-    --backend causal \
-    --task blimp \
-    --data_path evaluation_data/fast_eval/blimp_fast \
-    --save_predictions \
-    --revision_name main
-
-# EWoK evaluation
-python -m evaluation_pipeline.sentence_zero_shot.run \
-    --model_path_or_name MODEL_PATH \
-    --backend causal \
-    --task ewok \
-    --data_path evaluation_data/fast_eval/ewok_fast \
-    --save_predictions \
-    --revision_name main
-
-# Entity Tracking
-python -m evaluation_pipeline.sentence_zero_shot.run \
-    --model_path_or_name MODEL_PATH \
-    --backend causal \
-    --task entity_tracking \
-    --data_path evaluation_data/fast_eval/entity_tracking_fast \
-    --save_predictions \
-    --revision_name main
-
-# WUG Adjective Nominalization
-python -m evaluation_pipeline.sentence_zero_shot.run \
-    --model_path_or_name MODEL_PATH \
-    --backend causal \
-    --task wug_adj \
-    --data_path evaluation_data/fast_eval/wug_adj_nominalization \
-    --save_predictions \
-    --revision_name main
-
-# WUG Past Tense
-python -m evaluation_pipeline.sentence_zero_shot.run \
-    --model_path_or_name MODEL_PATH \
-    --backend causal \
-    --task wug_past \
-    --data_path evaluation_data/fast_eval/wug_past_tense \
-    --save_predictions \
-    --revision_name main
-
-# Reading Task
-python -m evaluation_pipeline.reading.run \
-    --model_path_or_name MODEL_PATH \
-    --backend causal \
-    --data_path evaluation_data/fast_eval/reading/reading_data.csv \
-    --revision_name main
-```
-
-### Fine-tuning Tasks
-
-```bash
-# BoolQ
-python -m evaluation_pipeline.finetune.run \
-    --model_name_or_path MODEL_PATH \
-    --train_data evaluation_data/full_eval/glue_filtered/boolq.train.jsonl \
-    --valid_data evaluation_data/full_eval/glue_filtered/boolq.valid.jsonl \
-    --predict_data evaluation_data/full_eval/glue_filtered/boolq.valid.jsonl \
-    --task boolq \
-    --num_labels 2 \
-    --batch_size 16 \
-    --learning_rate 3e-5 \
-    --num_epochs 10 \
-    --sequence_length 512 \
-    --results_dir results \
-    --save \
-    --save_dir models \
-    --metrics accuracy f1 mcc \
-    --metric_for_valid accuracy \
-    --seed 42 \
-    --verbose
-
-# MultiRC
-python -m evaluation_pipeline.finetune.run \
-    --model_name_or_path MODEL_PATH \
-    --train_data evaluation_data/full_eval/glue_filtered/multirc.train.jsonl \
-    --valid_data evaluation_data/full_eval/glue_filtered/multirc.valid.jsonl \
-    --predict_data evaluation_data/full_eval/glue_filtered/multirc.valid.jsonl \
-    --task multirc \
-    --num_labels 2 \
-    --batch_size 16 \
-    --learning_rate 3e-5 \
-    --num_epochs 10 \
-    --sequence_length 512 \
-    --results_dir results \
-    --save \
-    --save_dir models \
-    --metrics accuracy f1 mcc \
-    --metric_for_valid accuracy \
-    --seed 42 \
-    --verbose
-
-# RTE
-python -m evaluation_pipeline.finetune.run \
-    --model_name_or_path MODEL_PATH \
-    --train_data evaluation_data/full_eval/glue_filtered/rte.train.jsonl \
-    --valid_data evaluation_data/full_eval/glue_filtered/rte.valid.jsonl \
-    --predict_data evaluation_data/full_eval/glue_filtered/rte.valid.jsonl \
-    --task rte \
-    --num_labels 2 \
-    --batch_size 32 \
-    --learning_rate 3e-5 \
-    --num_epochs 10 \
-    --sequence_length 512 \
-    --results_dir results \
-    --save \
-    --save_dir models \
-    --metrics accuracy f1 mcc \
-    --metric_for_valid accuracy \
-    --seed 42
-```
-
-## Hardware Requirements
-
-- **GPU**: A100 (recommended) or similar high-memory GPU
-- **RAM**: 32GB+ recommended
-- **Storage**: 50GB+ free space for models and evaluation data
 
 ## Troubleshooting
 
-### Common Issues
+### NLTK Error Fixed
 
-1. **HuggingFace Authentication**: Ensure you're logged in with `huggingface-cli login`
-2. **EWoK Access**: Make sure you have approval for EWoK dataset on HuggingFace
-3. **Memory Issues**: Reduce batch sizes if encountering OOM errors
-4. **Permission Errors**: Ensure shell scripts are executable with `chmod +x *.sh`
-
-### Performance Optimization
-
-- Use `CUDA_VISIBLE_DEVICES=0` to specify GPU
-- Set `export TRANSFORMERS_CACHE=/path/to/cache` for model caching
-- Use gradient checkpointing for memory efficiency
-
-## Expected Runtime
-
-- **Fast Evaluation**: ~30-60 minutes per model
-- **Full Evaluation**: ~2-4 hours per model  
-- **Fine-tuning**: ~1-2 hours per model per task
-
-## Collecting Results
-
-After all evaluations complete, results will be in JSON format in the `results/` directory. You can use the built-in collation script:
-
-```bash
-python -m evaluation_pipeline.collate_preds
+The original error:
+```
+LookupError: Resource punkt_tab not found.
 ```
 
-This will generate summary statistics and performance metrics for all evaluated models.
+Has been fixed by adding automatic NLTK data downloads to the evaluation pipeline. The fix is located in:
+- `evaluation_pipeline/ewok/dl_and_filter.py`
 
-## Notes
+### Common Issues
 
-- All models are evaluated as causal language models
-- The evaluation uses the text-only strict track configuration
-- Results include both zero-shot and fine-tuned performance metrics
-- The pipeline automatically handles model loading and tokenization
+1. **Path Issues**: Ensure you're running scripts from the `evaluation-pipeline-2025` directory
+2. **Missing Data**: Verify `../evaluation_data/` exists and contains `fast_eval/` and `full_eval/`
+3. **GGUF Loading Fails**: The scripts automatically fall back to standard model loading
+4. **Memory Issues**: GGUF models use less memory; try those first for limited GPU setups
+
+### Model-Specific Notes
+
+- **TinyLLama-v0-5M-F16**: GGUF format, very small model, good for testing
+- **BitNet-b1.58-2B-4T**: GGUF format, larger quantized model
+- **DataDecide-dolma1_7-no-math-code-14M**: Standard format, requires more memory
+
+## Files in This Repository
+
+- `evaluate_models.py`: Standard evaluation script for all three models
+- `evaluate_gguf_models.py`: GGUF-optimized evaluation with compatibility testing
+- `check_model_compatibility.py`: Tests model loading and compatibility
+- `README.md`: This documentation
+
+## Results
+
+Results will be saved in the `results/` directory within the evaluation pipeline, with separate folders for each evaluation type and model.
+
+## Support
+
+For issues with:
+- **Evaluation pipeline**: Check the main evaluation-pipeline-2025 repository
+- **Model loading**: Use the compatibility checker script
+- **GGUF support**: Ensure transformers>=4.51.3 and gguf>=0.10.0
+- **Path issues**: Verify the directory structure matches the layout above

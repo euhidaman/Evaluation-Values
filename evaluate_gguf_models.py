@@ -53,92 +53,52 @@ EVAL_TYPES = {
 }
 
 def test_gguf_model_loading(model_config):
-    """Test if a GGUF model can be loaded with native transformers support."""
-    print(f"\n🔍 Testing GGUF model: {model_config['name']}")
-    print(f"   HuggingFace path: {model_config['hf_path']}")
+    """Test if a GGUF model can be loaded successfully."""
+    model_name = model_config["name"]
+    model_path = model_config["hf_path"]
+
+    print(f"🔍 Testing GGUF loading for {model_name}")
 
     try:
-        # Check if model has GGUF files
-        from huggingface_hub import hf_hub_download, list_repo_files
+        # Try to load with GGUF support
+        if model_config["model_type"] == "gguf":
+            # For GGUF models, try to detect and load the GGUF file
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-        files = list_repo_files(model_config['hf_path'], revision=model_config['revision'])
-        gguf_files = [f for f in files if f.endswith('.gguf')]
-
-        print(f"   📁 GGUF files found: {gguf_files}")
-
-        if not gguf_files:
-            print(f"   ⚠️  No GGUF files found, treating as standard model")
-            return test_standard_model_loading(model_config)
-
-        # Try to load tokenizer with GGUF support
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_config['hf_path'],
-            revision=model_config['revision'],
-            trust_remote_code=True,
-            gguf_file=gguf_files[0] if len(gguf_files) == 1 else None
-        )
-        print(f"   ✅ GGUF tokenizer loaded successfully")
-
-        # Try to load model with GGUF support
-        model = AutoModelForCausalLM.from_pretrained(
-            model_config['hf_path'],
-            revision=model_config['revision'],
-            trust_remote_code=True,
-            torch_dtype=torch.float16,
-            device_map="cpu",
-            low_cpu_mem_usage=True,
-            gguf_file=gguf_files[0] if len(gguf_files) == 1 else None
-        )
-        print(f"   ✅ GGUF model loaded successfully")
-        print(f"   📊 Model size: ~{model.num_parameters() / 1e6:.1f}M parameters")
-
-        # Test a simple forward pass
-        test_input = tokenizer("Hello world", return_tensors="pt")
-        with torch.no_grad():
-            output = model(**test_input)
-        print(f"   ✅ GGUF model forward pass successful")
-
-        # Clean up
-        del model, tokenizer, test_input, output
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-
-        return True, "GGUF compatible"
+            # Try loading with gguf_file parameter (newer transformers)
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    gguf_file="model.gguf",  # Common GGUF filename
+                    torch_dtype=torch.float16,
+                    device_map="auto"
+                )
+                print(f"✅ GGUF loading successful for {model_name}")
+                return True
+            except Exception as e:
+                print(f"⚠️  GGUF loading failed, trying standard loading: {e}")
+                # Fall back to standard loading
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    torch_dtype=torch.float16,
+                    device_map="auto"
+                )
+                print(f"✅ Standard loading successful for {model_name}")
+                return True
+        else:
+            # Standard model loading
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.float16,
+                device_map="auto"
+            )
+            print(f"✅ Standard loading successful for {model_name}")
+            return True
 
     except Exception as e:
-        print(f"   ❌ GGUF loading failed: {str(e)}")
-        print(f"   🔄 Trying standard loading method...")
-        return test_standard_model_loading(model_config)
-
-def test_standard_model_loading(model_config):
-    """Test standard HuggingFace model loading."""
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_config['hf_path'],
-            revision=model_config['revision'],
-            trust_remote_code=True
-        )
-        print(f"   ✅ Standard tokenizer loaded successfully")
-
-        model = AutoModelForCausalLM.from_pretrained(
-            model_config['hf_path'],
-            revision=model_config['revision'],
-            trust_remote_code=True,
-            torch_dtype=torch.float16,
-            device_map="cpu",
-            low_cpu_mem_usage=True
-        )
-        print(f"   ✅ Standard model loaded successfully")
-        print(f"   📊 Model size: ~{model.num_parameters() / 1e6:.1f}M parameters")
-
-        # Clean up
-        del model, tokenizer
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-
-        return True, "Standard compatible"
-
-    except Exception as e:
-        print(f"   ❌ Standard loading failed: {str(e)}")
-        return False, str(e)
+        print(f"❌ Model loading failed for {model_name}: {e}")
+        return False
 
 def run_command(cmd, description):
     """Run a shell command with error handling."""
@@ -172,17 +132,17 @@ def evaluate_model(model_config, eval_type="fast"):
 
     print(f"\n🚀 Starting {eval_type} evaluation for {model_name}")
 
-    # Set environment variables for GGUF support if needed
-    env_vars = ""
-    if model_config.get("model_type") == "gguf":
-        env_vars = "TRANSFORMERS_VERBOSITY=info "
+    # Test model loading first
+    if not test_gguf_model_loading(model_config):
+        print(f"❌ Skipping evaluation for {model_name} due to loading failure")
+        return False
 
     if eval_type == "fast":
-        cmd = f"{env_vars}{EVAL_TYPES[eval_type]['script']} {model_path} {revision} {architecture} {EVAL_TYPES[eval_type]['data_dir']}"
+        cmd = f"{EVAL_TYPES[eval_type]['script']} {model_path} {revision} {architecture} {EVAL_TYPES[eval_type]['data_dir']}"
     elif eval_type == "full":
-        cmd = f"{env_vars}{EVAL_TYPES[eval_type]['script']} {model_path} {architecture} {EVAL_TYPES[eval_type]['data_dir']}"
+        cmd = f"{EVAL_TYPES[eval_type]['script']} {model_path} {architecture} {EVAL_TYPES[eval_type]['data_dir']}"
     elif eval_type == "finetune":
-        cmd = f"{env_vars}{EVAL_TYPES[eval_type]['script']} {model_path}"
+        cmd = f"{EVAL_TYPES[eval_type]['script']} {model_path}"
     else:
         print(f"Unknown evaluation type: {eval_type}")
         return False
@@ -197,30 +157,9 @@ def evaluate_model(model_config, eval_type="fast"):
     return success
 
 def main():
-    """Main evaluation function."""
+    """Main GGUF evaluation function."""
     print("🎯 BabyLM 2025 GGUF Model Evaluation")
     print("=" * 60)
-
-    # Check transformers version for GGUF support
-    import transformers
-    print(f"📦 Transformers version: {transformers.__version__}")
-
-    # Check for GGUF support
-    try:
-        from transformers.utils import is_gguf_available
-        if is_gguf_available():
-            print("✅ Native GGUF support available")
-        else:
-            print("⚠️  GGUF support not available, install with: pip install gguf")
-    except ImportError:
-        print("⚠️  GGUF utilities not found")
-
-    # Check if we have GPU available
-    if torch.cuda.is_available():
-        print(f"🎯 GPU Available: {torch.cuda.get_device_name()}")
-        print(f"📊 GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB")
-    else:
-        print("⚠️  No GPU detected - evaluation will be slow")
 
     # Check if we're in the right directory
     if not os.path.exists("evaluation_pipeline"):
@@ -234,48 +173,32 @@ def main():
         print("Please ensure evaluation_data is downloaded and placed in the parent directory.")
         sys.exit(1)
 
-    # Test model compatibility first
-    print("\n" + "=" * 60)
-    print("🔬 TESTING MODEL COMPATIBILITY")
-    print("=" * 60)
-
-    compatible_models = []
-    for model in MODELS:
-        if model.get("model_type") == "gguf":
-            is_compatible, message = test_gguf_model_loading(model)
-        else:
-            is_compatible, message = test_standard_model_loading(model)
-
-        if is_compatible:
-            model['status'] = message
-            compatible_models.append(model)
-            print(f"   ✅ {model['name']}: {message}")
-        else:
-            print(f"   ❌ {model['name']}: {message}")
-
-    if not compatible_models:
-        print("❌ No compatible models found!")
-        sys.exit(1)
-
     # Create results directory if it doesn't exist
     os.makedirs("results", exist_ok=True)
 
     # Track evaluation results
     results = {}
 
-    # Run evaluations for each compatible model
-    print("\n" + "=" * 60)
-    print("🚀 STARTING EVALUATIONS")
-    print("=" * 60)
+    # Test GGUF compatibility first
+    print("\n🔧 Testing GGUF model compatibility...")
+    for model in MODELS:
+        model_name = model["name"]
+        print(f"\n📊 Testing model: {model_name}")
+        print(f"   HuggingFace path: {model['hf_path']}")
+        print(f"   Model type: {model['model_type']}")
 
-    for model in compatible_models:
+        if not test_gguf_model_loading(model):
+            print(f"⚠️  Model {model_name} failed compatibility test")
+
+    # Run evaluations for each model
+    for model in MODELS:
         model_name = model["name"]
         results[model_name] = {}
 
         print(f"\n📊 Evaluating model: {model_name}")
         print(f"   HuggingFace path: {model['hf_path']}")
         print(f"   Architecture: {model['architecture']}")
-        print(f"   Status: {model['status']}")
+        print(f"   Model type: {model['model_type']}")
 
         # Run fast evaluation (for quick testing)
         results[model_name]["fast"] = evaluate_model(model, "fast")
@@ -288,7 +211,7 @@ def main():
 
     # Print summary
     print("\n" + "=" * 60)
-    print("📋 EVALUATION SUMMARY")
+    print("📋 GGUF EVALUATION SUMMARY")
     print("=" * 60)
 
     for model_name, evals in results.items():

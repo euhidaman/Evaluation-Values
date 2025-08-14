@@ -1,164 +1,248 @@
 #!/usr/bin/env python3
 """
-Pre-evaluation setup script to check model compatibility and download models.
+BabyLM 2025 Model Compatibility Checker
+Tests if models can be loaded and are compatible with the evaluation pipeline.
 """
 
 import os
 import sys
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from pathlib import Path
 import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
+from huggingface_hub import list_repo_files
+import requests
 
-# Model configurations with compatibility checks
+# Model configurations to test
 MODELS = [
     {
         "name": "TinyLLama-v0-5M-F16",
         "hf_path": "mofosyne/TinyLLama-v0-5M-F16-llamafile",
         "architecture": "causal",
-        "revision": "main",
-        "status": "checking"
+        "model_type": "gguf"
     },
     {
         "name": "bitnet-b1.58-2B-4T",
         "hf_path": "microsoft/bitnet-b1.58-2B-4T-gguf",
         "architecture": "causal",
-        "revision": "main",
-        "status": "gguf_format",
-        "note": "GGUF format - may need conversion"
+        "model_type": "gguf"
     },
     {
         "name": "DataDecide-dolma1_7-no-math-code-14M",
         "hf_path": "allenai/DataDecide-dolma1_7-no-math-code-14M",
         "architecture": "causal",
-        "revision": "main",
-        "status": "checking"
+        "model_type": "standard"
     }
 ]
 
-def check_model_compatibility(model_config):
-    """Check if a model is compatible with HuggingFace transformers."""
-    print(f"\n🔍 Checking model: {model_config['name']}")
-    print(f"   HuggingFace path: {model_config['hf_path']}")
-
+def check_repo_exists(model_path):
+    """Check if HuggingFace repository exists and is accessible."""
     try:
-        # Try to load tokenizer first (lightweight check)
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_config['hf_path'],
-            revision=model_config['revision'],
-            trust_remote_code=True
-        )
-        print(f"   ✅ Tokenizer loaded successfully")
-
-        # Try to load model config (without downloading weights)
-        model = AutoModelForCausalLM.from_pretrained(
-            model_config['hf_path'],
-            revision=model_config['revision'],
-            trust_remote_code=True,
-            torch_dtype=torch.float16,
-            device_map="cpu",  # Don't load to GPU yet
-            low_cpu_mem_usage=True
-        )
-        print(f"   ✅ Model structure loaded successfully")
-        print(f"   📊 Model size: ~{model.num_parameters() / 1e6:.1f}M parameters")
-
-        # Clean up memory
-        del model
-        del tokenizer
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-
-        return True, "Compatible"
-
+        files = list_repo_files(model_path)
+        return True, files
     except Exception as e:
-        print(f"   ❌ Error loading model: {str(e)}")
         return False, str(e)
 
-def check_alternative_models():
-    """Suggest alternative models if some are incompatible."""
-    print("\n🔄 Checking for alternative compatible models...")
+def detect_gguf_files(repo_files):
+    """Detect GGUF files in the repository."""
+    gguf_files = [f for f in repo_files if f.endswith('.gguf')]
+    return gguf_files
 
-    alternative_models = [
-        {
-            "name": "TinyLlama-1.1B-Chat",
-            "hf_path": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-            "architecture": "causal",
-            "note": "Reliable small model"
-        },
-        {
-            "name": "microsoft-DialoGPT-small",
-            "hf_path": "microsoft/DialoGPT-small",
-            "architecture": "causal",
-            "note": "Small Microsoft model"
-        },
-        {
-            "name": "gpt2",
-            "hf_path": "gpt2",
-            "architecture": "causal",
-            "note": "Standard baseline model"
-        }
-    ]
+def test_model_config(model_path):
+    """Test if model configuration can be loaded."""
+    try:
+        config = AutoConfig.from_pretrained(model_path)
+        return True, config
+    except Exception as e:
+        return False, str(e)
 
-    compatible_alternatives = []
-    for model in alternative_models:
-        try:
-            tokenizer = AutoTokenizer.from_pretrained(model['hf_path'], trust_remote_code=True)
-            compatible_alternatives.append(model)
-            print(f"   ✅ Alternative available: {model['name']}")
-            del tokenizer
-        except:
-            print(f"   ❌ Alternative not available: {model['name']}")
+def test_tokenizer_loading(model_path):
+    """Test if tokenizer can be loaded."""
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        return True, tokenizer
+    except Exception as e:
+        return False, str(e)
 
-    return compatible_alternatives
+def test_model_loading(model_config):
+    """Test if model can be loaded successfully."""
+    model_path = model_config["hf_path"]
+    model_type = model_config["model_type"]
+
+    try:
+        if model_type == "gguf":
+            # Try GGUF loading first
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    gguf_file="model.gguf",
+                    torch_dtype=torch.float16,
+                    device_map="cpu"  # Use CPU for compatibility testing
+                )
+                return True, "GGUF loading successful"
+            except Exception as gguf_error:
+                # Fall back to standard loading
+                try:
+                    model = AutoModelForCausalLM.from_pretrained(
+                        model_path,
+                        torch_dtype=torch.float16,
+                        device_map="cpu"
+                    )
+                    return True, f"Standard loading successful (GGUF failed: {gguf_error})"
+                except Exception as std_error:
+                    return False, f"Both GGUF and standard loading failed. GGUF: {gguf_error}, Standard: {std_error}"
+        else:
+            # Standard model loading
+            model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                torch_dtype=torch.float16,
+                device_map="cpu"
+            )
+            return True, "Standard loading successful"
+
+    except Exception as e:
+        return False, str(e)
+
+def check_model_compatibility(model_config):
+    """Comprehensive compatibility check for a model."""
+    model_name = model_config["name"]
+    model_path = model_config["hf_path"]
+
+    print(f"\n{'='*60}")
+    print(f"🔍 Checking compatibility for: {model_name}")
+    print(f"📍 Repository: {model_path}")
+    print(f"🏗️  Architecture: {model_config['architecture']}")
+    print(f"📦 Model type: {model_config['model_type']}")
+    print(f"{'='*60}")
+
+    results = {
+        "model_name": model_name,
+        "repo_accessible": False,
+        "config_loadable": False,
+        "tokenizer_loadable": False,
+        "model_loadable": False,
+        "gguf_files": [],
+        "errors": []
+    }
+
+    # 1. Check repository accessibility
+    print("1️⃣ Checking repository accessibility...")
+    repo_exists, repo_info = check_repo_exists(model_path)
+    if repo_exists:
+        print("   ✅ Repository is accessible")
+        results["repo_accessible"] = True
+
+        # Check for GGUF files
+        if model_config["model_type"] == "gguf":
+            gguf_files = detect_gguf_files(repo_info)
+            results["gguf_files"] = gguf_files
+            if gguf_files:
+                print(f"   📦 Found GGUF files: {gguf_files}")
+            else:
+                print("   ⚠️  No GGUF files found in repository")
+    else:
+        print(f"   ❌ Repository not accessible: {repo_info}")
+        results["errors"].append(f"Repository access failed: {repo_info}")
+        return results
+
+    # 2. Check model configuration
+    print("2️⃣ Checking model configuration...")
+    config_ok, config_info = test_model_config(model_path)
+    if config_ok:
+        print("   ✅ Model configuration loaded successfully")
+        print(f"   📋 Model type: {config_info.model_type}")
+        results["config_loadable"] = True
+    else:
+        print(f"   ❌ Model configuration failed: {config_info}")
+        results["errors"].append(f"Config loading failed: {config_info}")
+
+    # 3. Check tokenizer
+    print("3️⃣ Checking tokenizer...")
+    tokenizer_ok, tokenizer_info = test_tokenizer_loading(model_path)
+    if tokenizer_ok:
+        print("   ✅ Tokenizer loaded successfully")
+        print(f"   📝 Vocab size: {len(tokenizer_info.get_vocab())}")
+        results["tokenizer_loadable"] = True
+    else:
+        print(f"   ❌ Tokenizer loading failed: {tokenizer_info}")
+        results["errors"].append(f"Tokenizer loading failed: {tokenizer_info}")
+
+    # 4. Check model loading
+    print("4️⃣ Checking model loading...")
+    model_ok, model_info = test_model_loading(model_config)
+    if model_ok:
+        print(f"   ✅ Model loaded successfully: {model_info}")
+        results["model_loadable"] = True
+    else:
+        print(f"   ❌ Model loading failed: {model_info}")
+        results["errors"].append(f"Model loading failed: {model_info}")
+
+    # Overall compatibility assessment
+    all_checks_passed = all([
+        results["repo_accessible"],
+        results["config_loadable"],
+        results["tokenizer_loadable"],
+        results["model_loadable"]
+    ])
+
+    if all_checks_passed:
+        print(f"\n🎉 {model_name} is FULLY COMPATIBLE with the evaluation pipeline!")
+    else:
+        print(f"\n⚠️  {model_name} has compatibility issues. See errors above.")
+
+    return results
 
 def main():
-    """Main model compatibility checking function."""
-    print("🚀 BabyLM 2025 Model Compatibility Checker")
+    """Main compatibility checking function."""
+    print("🔧 BabyLM 2025 Model Compatibility Checker")
     print("=" * 60)
+    print("This script tests if models can be loaded and are compatible with the evaluation pipeline.")
+    print()
 
-    # Check if we have GPU available
+    # Check Python and PyTorch environment
+    print(f"🐍 Python version: {sys.version}")
+    print(f"🔥 PyTorch version: {torch.__version__}")
+    print(f"💾 CUDA available: {torch.cuda.is_available()}")
     if torch.cuda.is_available():
-        print(f"🎯 GPU Available: {torch.cuda.get_device_name()}")
-        print(f"📊 GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f}GB")
-    else:
-        print("⚠️  No GPU detected - evaluation will be slow")
+        print(f"🎮 GPU count: {torch.cuda.device_count()}")
+    print()
 
-    # Check each model
-    compatible_models = []
-    incompatible_models = []
+    all_results = []
 
-    for model in MODELS:
-        is_compatible, message = check_model_compatibility(model)
+    # Test each model
+    for model_config in MODELS:
+        result = check_model_compatibility(model_config)
+        all_results.append(result)
 
-        if is_compatible:
-            compatible_models.append(model)
-        else:
-            model['error'] = message
-            incompatible_models.append(model)
-
-    # Print summary
+    # Summary report
     print("\n" + "=" * 60)
     print("📋 COMPATIBILITY SUMMARY")
     print("=" * 60)
 
-    if compatible_models:
-        print(f"\n✅ Compatible Models ({len(compatible_models)}):")
-        for model in compatible_models:
-            print(f"   • {model['name']}")
+    for result in all_results:
+        model_name = result["model_name"]
+        status = "✅ COMPATIBLE" if result["model_loadable"] else "❌ INCOMPATIBLE"
+        print(f"{model_name}: {status}")
 
-    if incompatible_models:
-        print(f"\n❌ Incompatible Models ({len(incompatible_models)}):")
-        for model in incompatible_models:
-            print(f"   • {model['name']}: {model['error']}")
+        if result["errors"]:
+            print(f"   Issues found: {len(result['errors'])}")
+            for error in result["errors"]:
+                print(f"     - {error}")
 
-        # Suggest alternatives
-        alternatives = check_alternative_models()
-        if alternatives:
-            print(f"\n🔄 Suggested Alternative Models:")
-            for alt in alternatives:
-                print(f"   • {alt['name']} ({alt['hf_path']}) - {alt['note']}")
+        if result["gguf_files"]:
+            print(f"   GGUF files: {result['gguf_files']}")
 
-    print(f"\n🎉 Compatibility check completed!")
-    return len(compatible_models) > 0
+    # Overall summary
+    compatible_count = sum(1 for r in all_results if r["model_loadable"])
+    total_count = len(all_results)
+
+    print(f"\n📊 Overall: {compatible_count}/{total_count} models are compatible")
+
+    if compatible_count == total_count:
+        print("🎉 All models are ready for evaluation!")
+    else:
+        print("⚠️  Some models need attention before evaluation.")
+
+    return all_results
 
 if __name__ == "__main__":
-    success = main()
-    if not success:
-        sys.exit(1)
+    main()
