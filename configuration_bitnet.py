@@ -33,6 +33,9 @@ class BitNetConfig(PretrainedConfig):
         tie_word_embeddings=True,
         rope_theta=500000.0,
         attention_dropout=0.0,
+        attention_bias=False,
+        mlp_bias=False,
+        pretraining_tp=1,
         **kwargs,
     ):
         self.vocab_size = vocab_size
@@ -48,6 +51,9 @@ class BitNetConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.rope_theta = rope_theta
         self.attention_dropout = attention_dropout
+        self.attention_bias = attention_bias
+        self.mlp_bias = mlp_bias
+        self.pretraining_tp = pretraining_tp
 
         super().__init__(
             tie_word_embeddings=tie_word_embeddings,
